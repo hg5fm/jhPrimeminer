@@ -18,7 +18,11 @@ typedef struct _msgInfoLink_t
 
 typedef struct _msgQueue_t
 {
+#ifdef _WIN32
 	CRITICAL_SECTION criticalSection;
+#else
+  pthread_mutex_t criticalSection;
+#endif
 	sint32 nameId;
 	msgInfoLink_t *first;
 	msgInfoLink_t *last; // for fast appending

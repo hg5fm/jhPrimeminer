@@ -2,7 +2,11 @@
 
 typedef struct  
 {
+#ifdef _WIN32
 	CRITICAL_SECTION criticalSection;
+#else
+  pthread_mutex_t criticalSection;
+#endif
 	hashTable_t ht_msgQueues;
 	uint32 uniqueNameCounter;
 }messageQueueEnvironment_t;
@@ -16,7 +20,11 @@ messageQueueEnvironment_t messageQueueEnvironment;
  */
 void msgQueue_init()
 {
+#ifdef _WIN32
 	InitializeCriticalSection(&messageQueueEnvironment.criticalSection);
+#else
+  pthread_mutex_init(&messageQueueEnvironment.criticalSection);
+#endif
 	hashTable_init(&messageQueueEnvironment.ht_msgQueues, 4);
 	messageQueueEnvironment.uniqueNameCounter = 0x70000000;
 }
@@ -29,15 +37,25 @@ msgQueue_t* msgQueue_create(sint32 nameId, void (JHCALLBACK *messageProc)(msgQue
 	msgQueue_t *msgQueue = (msgQueue_t*)malloc(sizeof(msgQueue_t));
 	RtlZeroMemory(msgQueue, sizeof(msgQueue_t));
 	// setup
+#ifdef _WIN32
 	InitializeCriticalSection(&msgQueue->criticalSection);
+#else
+  pthread_mutex_init(&msgQueue->criticalSection);
+#endif
 	msgQueue->first = NULL;
 	msgQueue->last = NULL;
 	msgQueue->nameId = nameId;
 	msgQueue->messageProc = messageProc;
 	// auto-activate
+#ifdef _WIN32
 	EnterCriticalSection(&messageQueueEnvironment.criticalSection);
 	hashTable_set(&messageQueueEnvironment.ht_msgQueues, msgQueue->nameId, msgQueue);
 	LeaveCriticalSection(&messageQueueEnvironment.criticalSection);
+#else
+  pthread_mutex_lock(&messageQueueEnvironment.criticalSection);
+	hashTable_set(&messageQueueEnvironment.ht_msgQueues, msgQueue->nameId, msgQueue);
+	pthread_mutex_unlock(&messageQueueEnvironment.criticalSection);
+#endif
 	// return queue
 	return msgQueue;
 }
@@ -62,10 +80,17 @@ sint32 msgQueue_generateUniqueNameId()
 	//LeaveCriticalSection(&messageQueueEnvironment.criticalSection);
 	//return 0;
 	uint32 name = 0;
+#ifdef _WIN32
 	EnterCriticalSection(&messageQueueEnvironment.criticalSection);
 	name = messageQueueEnvironment.uniqueNameCounter;
 	messageQueueEnvironment.uniqueNameCounter++;
 	LeaveCriticalSection(&messageQueueEnvironment.criticalSection);
+#else
+  pthread_mutex_lock(&messageQueueEnvironment.criticalSection);
+	name = messageQueueEnvironment.uniqueNameCounter;
+	messageQueueEnvironment.uniqueNameCounter++;
+	pthread_mutex_unlock(&messageQueueEnvironment.criticalSection);
+#endif
 	return name;
 }
 
@@ -74,9 +99,15 @@ sint32 msgQueue_generateUniqueNameId()
  */
 void msgQueue_activate(msgQueue_t* msgQueue)
 {
+#ifdef _WIN32
 	EnterCriticalSection(&messageQueueEnvironment.criticalSection);
 	hashTable_set(&messageQueueEnvironment.ht_msgQueues, msgQueue->nameId, msgQueue);
 	LeaveCriticalSection(&messageQueueEnvironment.criticalSection);
+#else
+  pthread_mutex_lock(&messageQueueEnvironment.criticalSection);
+	hashTable_set(&messageQueueEnvironment.ht_msgQueues, msgQueue->nameId, msgQueue);
+	pthread_mutex_unlock(&messageQueueEnvironment.criticalSection);
+#endif
 }
 
 /*
@@ -117,7 +148,11 @@ void msgQueue_activate(msgQueue_t* msgQueue)
 
 bool msgQueue_check(msgQueue_t* msgQueue)
 {
+#ifdef _WIN32
 	EnterCriticalSection(&msgQueue->criticalSection);
+#else
+  pthread_mutex_lock(&msgQueue->criticalSection);
+#endif
 	if( msgQueue->first )
 	{
 		msgInfoLink_t *next = msgQueue->first->next;
@@ -138,10 +173,18 @@ bool msgQueue_check(msgQueue_t* msgQueue)
 		}
 		msgQueue->messageProc(msgQueue, msg.msgId, msg.paramA, msg.paramB, msg.data);
 		if( msg.data ) free(msg.data);
+#ifdef _WIN32
 		LeaveCriticalSection(&msgQueue->criticalSection);
+#else
+    pthread_mutex_unlock(&msgQueue->criticalSection);
+#endif
 		return true;
 	}
-	LeaveCriticalSection(&msgQueue->criticalSection);
+#ifdef _WIN32
+		LeaveCriticalSection(&msgQueue->criticalSection);
+#else
+    pthread_mutex_unlock(&msgQueue->criticalSection);
+#endif
 	return false;
 }
 
@@ -172,7 +215,11 @@ bool msgQueue_postMessage(sint32 destNameId, sint32 msgId, uint32 param1, uint32
 		msg->msgInfo.paramB = param2;
 		msg->msgInfo.data = data;
 		// append
+#ifdef _WIN32
 		EnterCriticalSection(&msgQueue->criticalSection);
+#else
+    pthread_mutex_lock(&msgQueue->criticalSection);
+#endif
 		if( msgQueue->last == NULL )
 		{
 			if( msgQueue->first != NULL )
@@ -191,7 +238,11 @@ bool msgQueue_postMessage(sint32 destNameId, sint32 msgId, uint32 param1, uint32
 			msgQueue->last->next = msg;
 			msgQueue->last = msg;
 		}
+#ifdef _WIN32
 		LeaveCriticalSection(&msgQueue->criticalSection);
+#else
+    pthread_mutex_unlock(&msgQueue->criticalSection);
+#endif
 	}
 	return true;
 }

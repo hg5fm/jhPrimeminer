@@ -3,7 +3,9 @@
 #ifndef __JHSYSTEMLIB
 #define __JHSYSTEMLIB
 
+#ifdef _WIN32
 #include<Windows.h>
+#endif
 #include<math.h>
 
 typedef unsigned long long 	uint64;
@@ -17,7 +19,6 @@ typedef signed short 	sint16;
 
 typedef unsigned char 	uint8;
 typedef signed char 	sint8;
-
 
 #define JHCALLBACK	__fastcall
 
@@ -47,7 +48,7 @@ void _ex2_analyzeMemoryLog();
 #define free(x) _ex2_free(x,__FILE__,__LINE__)
 #endif
 
-#include".\streamWrapper.h"
+/*#include".\streamWrapper.h"
 #include".\fastString.h"
 #include".\hashTable.h"
 #include".\fastSorter.h"
@@ -59,7 +60,21 @@ void _ex2_analyzeMemoryLog();
 #include".\packetBuffer.h"
 #include".\msgQueue.h"
 #include".\simpleList.h"
-#include".\customBuffer.h"
+#include".\customBuffer.h"*/
+
+#include"streamWrapper.h"
+#include"fastString.h"
+#include"hashTable.h"
+#include"fastSorter.h"
+#include"fileMgr.h"
+#include"sData.h"
+#include"bmp.h"
+#include"tgaLib.h"
+#include"fMath.h"
+#include"packetBuffer.h"
+#include"msgQueue.h"
+#include"simpleList.h"
+#include"customBuffer.h"
 
 
 /* error */
