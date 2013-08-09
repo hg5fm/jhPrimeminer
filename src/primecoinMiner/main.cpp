@@ -968,7 +968,6 @@ int jhMiner_main_xptMode()
   // start the Auto Tuning thread
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AutoTuningWorkerThread, (LPVOID)true, 0, 0);
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)input_thread, NULL, 0, 0);
-
 	// start threads
 	for(sint32 threadIdx=0; threadIdx<commandlineInput.numThreads; threadIdx++)
 	{
@@ -980,13 +979,24 @@ int jhMiner_main_xptMode()
   pthread_t threads[commandlineInput.numThreads + 2];
   pthread_create(&threads[0], NULL, AutoTuningWorkerThread, NULL);
   pthread_create(&threads[1], NULL, input_thread, NULL);
+  pthread_attr_t threadAttr;
+  pthread_attr_init(&threadAttr);
+  // Set the stack size of the thread
+  pthread_attr_setstacksize(&threadAttr, 120*1024);
 
-	// start threads
+  // free resources of thread upon return
+  pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
+	
+  // start threads
 	for(uint32_t threadIdx=2; threadIdx<commandlineInput.numThreads; threadIdx++)
 	{
-		pthread_create(&threads[threadIdx], NULL jhMiner_workerThread_xpt, NULL);
+		pthread_create(&threads[threadIdx], 
+                   threadAttr, 
+                   jhMiner_workerThread_xpt, 
+                   NULL);
     pthread_setsched(&threads[threadIdx], SCHED_OTHER);
 	}
+  pthread_attr_destroy(&threadAttr);
 #endif
 	// main thread, don't query work, just wait and process
 	sint32 loopCounter = 0;

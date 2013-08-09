@@ -1,15 +1,26 @@
 #include"global.h"
 
-
+#ifdef _WIN32
 SOCKET xptClient_openConnection(char *IP, int Port)
 {
-	SOCKET s=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+  SOCKET s=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
 	SOCKADDR_IN addr;
 	memset(&addr,0,sizeof(SOCKADDR_IN));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(Port);
 	addr.sin_addr.s_addr=inet_addr(IP);
 	int result = connect(s,(SOCKADDR*)&addr,sizeof(SOCKADDR_IN));
+#else
+sockfd xptClient_openConnection(char *IP, int Port)
+{
+  sockfd s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(sockaddr_in));
+	addr.sin_family = AF_INET;
+	addr.sin_port=htons(Port);
+	addr.sin_addr.s_addr = inet_addr(IP);
+	int result = connect(s, (sockaddr*)&addr, sizeof(sockaddr_in));
+#endif
 	if( result )
 	{
 		return 0;
@@ -24,13 +35,24 @@ SOCKET xptClient_openConnection(char *IP, int Port)
 xptClient_t* xptClient_connect(jsonRequestTarget_t* target, uint32 payloadNum)
 {
 	// first try to connect to the given host/port
-	SOCKET clientSocket = xptClient_openConnection(target->ip, target->port);
+#ifdef _WIN32
+  SOCKET clientSocket = xptClient_openConnection(target->ip, target->port);
+#else
+  sockfd clientSocket = xptClient_openConnection(target->ip, target->port);
+#endif
 	if( clientSocket == 0 )
 		return NULL;
-	// set socket as non-blocking
+#ifdef _WIN32
+  // set socket as non-blocking
 	unsigned int nonblocking=1;
 	unsigned int cbRet;
 	WSAIoctl(clientSocket, FIONBIO, &nonblocking, sizeof(nonblocking), NULL, 0, (LPDWORD)&cbRet, NULL, NULL);
+#else
+  int flags, err;
+  flags = socket_fcntl(clientSocket, F_GETFL, 0); 
+  flags |= O_NONBLOCK;
+  err = socket_fcntl(clientSocket, F_SETFL, flags); //ignore errors for now..
+#endif
 	// initialize the client object
 	xptClient_t* xptClient = (xptClient_t*)malloc(sizeof(xptClient_t));
 	memset(xptClient, 0x00, sizeof(xptClient_t));
@@ -40,7 +62,11 @@ xptClient_t* xptClient_connect(jsonRequestTarget_t* target, uint32 payloadNum)
 	fStrCpy(xptClient->username, target->authUser, 127);
 	fStrCpy(xptClient->password, target->authPass, 127);
 	xptClient->payloadNum = max(1, min(127, payloadNum));
-	InitializeCriticalSection(&xptClient->cs_shareSubmit);
+#ifdef _WIN32
+  InitializeCriticalSection(&xptClient->cs_shareSubmit);
+#else
+  pthread_mutex_init(&xptClient->cs_shareSubmit);
+#endif
 	xptClient->list_shareSubmitQueue = simpleList_create(4);
 	// send worker login
 	xptClient_sendWorkerLogin(xptClient);
@@ -56,8 +82,12 @@ void xptClient_free(xptClient_t* xptClient)
 	xptPacketbuffer_free(xptClient->sendBuffer);
 	xptPacketbuffer_free(xptClient->recvBuffer);
 	if( xptClient->clientSocket != 0 )
-	{
+  {
+#ifdef _WIN32
 		closesocket(xptClient->clientSocket);
+#else
+    close(xptClient->clientSocket);
+#endif
 	}
 	simpleList_free(xptClient->list_shareSubmitQueue);
 	free(xptClient);
@@ -139,7 +169,11 @@ bool xptClient_process(xptClient_t* xptClient)
 	if( xptClient == NULL )
 		return false;
 	// are there shares to submit?
-	EnterCriticalSection(&xptClient->cs_shareSubmit);
+#ifdef _WIN32
+  EnterCriticalSection(&xptClient->cs_shareSubmit);
+#else
+  pthread_mutex_lock(&xptClient->cs_shareSubmit);
+#endif
 	if( xptClient->list_shareSubmitQueue->objectCount > 0 )
 	{
 		for(uint32 i=0; i<xptClient->list_shareSubmitQueue->objectCount; i++)
@@ -151,7 +185,11 @@ bool xptClient_process(xptClient_t* xptClient)
 		// clear list
 		xptClient->list_shareSubmitQueue->objectCount = 0;
 	}
+#ifdef _WIN32
 	LeaveCriticalSection(&xptClient->cs_shareSubmit);
+#else
+  pthread_mutex_unlock(&xptClient->cs_shareSubmit);
+#endif
 	// check for packets
 	sint32 packetFullSize = 4; // the packet always has at least the size of the header
 	if( xptClient->recvSize > 0 )
@@ -161,12 +199,19 @@ bool xptClient_process(xptClient_t* xptClient)
 	sint32 r = recv(xptClient->clientSocket, (char*)(xptClient->recvBuffer->buffer+xptClient->recvIndex), bytesToReceive, 0);
 	if( r <= 0 )
 	{
-		// receive error, is it a real error or just because of non blocking sockets?
-		if( WSAGetLastError() != WSAEWOULDBLOCK )
+		
+#ifdef _WIN32 
+    // receive error, is it a real error or just because of non blocking sockets?
+    if( WSAGetLastError() != WSAEWOULDBLOCK )
 		{
 			xptClient->disconnected = true;
 			return false;
 		}
+#else
+    // TODO not sure what the *nix equivalent is to WSAGetLastError()
+    xptClient->disconnected = true;
+    return false;
+#endif
 		return true;
 	}
 	xptClient->recvIndex += r;
@@ -205,7 +250,11 @@ bool xptClient_process(xptClient_t* xptClient)
 			// disconnect
 			if( xptClient->clientSocket != 0 )
 			{
+#ifdef _WIN32
 				closesocket(xptClient->clientSocket);
+#else
+        close(xptClient->clientSocket);
+#endif
 				xptClient->clientSocket = 0;
 			}
 			xptClient->disconnected = true;
@@ -239,7 +288,13 @@ bool xptClient_isAuthenticated(xptClient_t* xptClient)
 
 void xptClient_foundShare(xptClient_t* xptClient, xptShareToSubmit_t* xptShareToSubmit)
 {
+#ifdef _WIN32
 	EnterCriticalSection(&xptClient->cs_shareSubmit);
 	simpleList_add(xptClient->list_shareSubmitQueue, xptShareToSubmit);
 	LeaveCriticalSection(&xptClient->cs_shareSubmit);
+#else
+  pthread_mutex_lock(&xptClient->cs_shareSubmit);
+	simpleList_add(xptClient->list_shareSubmitQueue, xptShareToSubmit);
+	pthread_mutex_unlock(&xptClient->cs_shareSubmit);
+#endif
 }
