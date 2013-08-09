@@ -1,6 +1,6 @@
 #include"global.h"
 
-#include<intrin.h>
+//#include<intrin.h>
 #include<ctime>
 #include<map>
 #include<conio.h>
@@ -187,7 +187,11 @@ typedef struct
 
 typedef struct  
 {
-	CRITICAL_SECTION cs;
+#ifdef _WIN32
+  CRITICAL_SECTION cs;
+#else
+  pthread_mutex_t cs;
+#endif
 	uint8 protocolMode;
 	// xpm
 	workDataEntry_t workEntry[128]; // work data for each thread (up to 128)
@@ -378,8 +382,11 @@ void jhMiner_queryWork_primecoin()
 		uint32 stringData_length = 0;
 		uint8* stringData_data = jsonObject_getStringData(jsonResult_data, &stringData_length);
 		//printf("data: %.*s...\n", (sint32)min(48, stringData_length), stringData_data);
-
+#ifdef _WIN32
 		EnterCriticalSection(&workData.cs);
+#else
+    pthread_mutex_lock(&workdata.cs);
+#endif
 		yPoolWorkMgr_parseHexString((char*)stringData_data, min(128*2, stringData_length), workData.workEntry[0].data);
 		workData.workEntry[0].dataIsValid = true;
 		// get server data
@@ -396,7 +403,11 @@ void jhMiner_queryWork_primecoin()
 			workDataHash += (uint32)workData.workEntry[0].data[i];
 		}
 		workData.workEntry[0].dataHash = workDataHash;
-		LeaveCriticalSection(&workData.cs);
+#ifdef _WIN32
+    LeaveCriticalSection(&workData.cs);
+#else
+    pthread_mutex_unlock(&workdata.cs);
+#endif
 		jsonObject_freeObject(jsonReturnValue);
 	}
 }
@@ -424,11 +435,19 @@ int jhMiner_workerThread_getwork(int threadIndex)
 		uint32 workDataHash = 0;
 		uint8 serverData[32];
 		while( workData.workEntry[0].dataIsValid == false ) Sleep(200);
-		EnterCriticalSection(&workData.cs);
+#ifdef _WIN32
+    EnterCriticalSection(&workData.cs);
+#else
+    pthread_mutex_lock(&workdata.cs);
+#endif
 		memcpy(localBlockData, workData.workEntry[0].data, 128);
 		//seed = workData.seed;
 		memcpy(serverData, workData.workEntry[0].serverData, 32);
+#ifdef _WIN32
 		LeaveCriticalSection(&workData.cs);
+#else
+    pthread_mutex_unlock(&workdata.cs);
+#endif
 		// swap endianess
 		for(uint32 i=0; i<128/4; i++)
 		{
@@ -462,11 +481,19 @@ int jhMiner_workerThread_xpt(int threadIndex)
 		uint32 workDataHash = 0;
 		uint8 serverData[32];
 		while( workData.workEntry[threadIndex].dataIsValid == false ) Sleep(50);
+#ifdef _WIN32
 		EnterCriticalSection(&workData.cs);
+#else
+    pthread_mutex_lock(&workdata.cs);
+#endif
 		memcpy(localBlockData, workData.workEntry[threadIndex].data, 128);
 		memcpy(serverData, workData.workEntry[threadIndex].serverData, 32);
 		workDataHash = workData.workEntry[threadIndex].dataHash;
+#ifdef _WIN32
 		LeaveCriticalSection(&workData.cs);
+#else
+    pthread_mutex_unlock(&workdata.cs);
+#endif
 		// convert raw data into primecoin block
 		primecoinBlock_t primecoinBlock = {0};
 		memcpy(&primecoinBlock, localBlockData, 80);
@@ -937,7 +964,8 @@ static void input_thread()
  */
 int jhMiner_main_xptMode()
 {
-	// start the Auto Tuning thread
+#ifdef _WIN32
+  // start the Auto Tuning thread
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)AutoTuningWorkerThread, (LPVOID)true, 0, 0);
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)input_thread, NULL, 0, 0);
 
@@ -947,6 +975,19 @@ int jhMiner_main_xptMode()
 		HANDLE hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)jhMiner_workerThread_xpt, (LPVOID)threadIdx, 0, 0);
 		SetThreadPriority(hThread, THREAD_PRIORITY_BELOW_NORMAL);
 	}
+#else
+    // start the Auto Tuning thread
+  pthread_t threads[commandlineInput.numThreads + 2];
+  pthread_create(&threads[0], NULL, AutoTuningWorkerThread, NULL);
+  pthread_create(&threads[1], NULL, input_thread, NULL);
+
+	// start threads
+	for(uint32_t threadIdx=2; threadIdx<commandlineInput.numThreads; threadIdx++)
+	{
+		pthread_create(&threads[threadIdx], NULL jhMiner_workerThread_xpt, NULL);
+    pthread_setsched(&threads[threadIdx], SCHED_OTHER);
+	}
+#endif
 	// main thread, don't query work, just wait and process
 	sint32 loopCounter = 0;
 	uint32 xptWorkIdentifier = 0xFFFFFFFF;
@@ -1130,10 +1171,14 @@ int main(int argc, char **argv)
 	GeneratePrimeTable(commandlineInput.sievePrimeLimit);
 	printf("Sieve Percentage: %u %%\n", nSievePercentage);
 	// init winsock
-	WSADATA wsa;
+#ifdef WIN32
+  WSADATA wsa;
 	WSAStartup(MAKEWORD(2,2),&wsa);
 	// init critical section
 	InitializeCriticalSection(&workData.cs);
+#else
+  pthread_mutex_init(&workdata.cs);
+#endif
 	// connect to host
 	hostent* hostInfo = gethostbyname(commandlineInput.host);
 	if( hostInfo == NULL )

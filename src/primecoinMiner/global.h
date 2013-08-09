@@ -1,6 +1,12 @@
+#ifdef _WIN32
 #pragma comment(lib,"Ws2_32.lib")
 #include<Winsock2.h>
 #include<ws2tcpip.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <pthread.h>
+#endif
 #include"jhlib/JHLib.h"
 
 #include<stdio.h>
@@ -37,8 +43,13 @@ int BN2_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 #include"prime.h"
 #include"jsonrpc.h"
 
+#ifdef _WIN32
 #include "mpirxx.h"
 #include "mpir.h"
+#else
+#include <gmpxx.h>
+#include <gmp.h>
+#endif
 #include<stdint.h>
 #include"xptServer.h"
 #include"xptClient.h"
