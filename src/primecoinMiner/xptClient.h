@@ -20,7 +20,7 @@ typedef struct
 #ifdef _WIN32
   SOCKET clientSocket;
 #else
-  sock_fd clientSocket;
+  int clientSocket;
 #endif
 	xptPacketbuffer_t* sendBuffer; // buffer for sending data
 	xptPacketbuffer_t* recvBuffer; // buffer for receiving data

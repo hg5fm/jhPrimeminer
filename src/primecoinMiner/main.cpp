@@ -3,8 +3,8 @@
 //#include<intrin.h>
 #include<ctime>
 #include<map>
-#include<conio.h>
-
+#include <cstdlib>
+#include <cstdio>
 
 primeStats_t primeStats = {0};
 volatile int total_shares = 0;
@@ -18,6 +18,45 @@ bool error(const char *format, ...)
 	puts(format);
 	//__debugbreak();
 	return false;
+}
+
+int getNumThreads(void) {
+  // based on code from ceretullis on SO
+  int numcpu = 1; // in case we fall through;
+#if defined(__FREEBSD__) || defined(__NETBSD__) || defined(__OPENBSD__)
+  int mib[4];
+  size_t len = sizeof(numcpu); 
+
+  /* set the mib for hw.ncpu */
+  mib[0] = CTL_HW;
+  mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
+
+  /* get the number of CPUs from the system */
+  sysctl(mib, 2, &numcpu, &len, NULL, 0);
+
+  if( numCPU < 1 ) 
+  {
+    mib[1] = HW_NCPU;
+    sysctl( mib, 2, &numcpu, &len, NULL, 0 );
+
+    if( numcpu < 1 )
+    {
+      numcpu = 1;
+    }
+  }
+#elif defined(__linux__) || defined(sun) || defined(__APPLE__)
+  numcpu = sysconf(_SC_NPROCESSORS_ONLN);
+#elif defined(_SYSTYPE_SVR4)
+  numcpu = sysconf( _SC_NPROC_ONLN );
+#elif defined(hpux)
+  numcpu = mpctl(MPC_GETNUMSPUS, NULL, NULL);
+#elif defined(_WIN32)
+  SYSTEM_INFO sysinfo;
+	GetSystemInfo( &sysinfo );
+	numcpu = sysinfo.dwNumberOfProcessors;
+#endif
+  
+  return numcpu;
 }
 
 /*
@@ -385,16 +424,16 @@ void jhMiner_queryWork_primecoin()
 #ifdef _WIN32
 		EnterCriticalSection(&workData.cs);
 #else
-    pthread_mutex_lock(&workdata.cs);
+    pthread_mutex_lock(&workData.cs);
 #endif
-		yPoolWorkMgr_parseHexString((char*)stringData_data, min(128*2, stringData_length), workData.workEntry[0].data);
+		yPoolWorkMgr_parseHexString((char*)stringData_data, std::min<unsigned long>(128*2, stringData_length), workData.workEntry[0].data);
 		workData.workEntry[0].dataIsValid = true;
 		// get server data
 		uint32 stringServerData_length = 0;
 		uint8* stringServerData_data = jsonObject_getStringData(jsonResult_serverData, &stringServerData_length);
-		RtlZeroMemory(workData.workEntry[0].serverData, 32);
+		memset(workData.workEntry[0].serverData, 0, 32);
 		if( jsonResult_serverData )
-			yPoolWorkMgr_parseHexString((char*)stringServerData_data, min(128*2, 32*2), workData.workEntry[0].serverData);
+			yPoolWorkMgr_parseHexString((char*)stringServerData_data, std::min(128*2, 32*2), workData.workEntry[0].serverData);
 		// generate work hash
 		uint32 workDataHash = 0x5B7C8AF4;
 		for(uint32 i=0; i<stringData_length/2; i++)
@@ -406,7 +445,7 @@ void jhMiner_queryWork_primecoin()
 #ifdef _WIN32
     LeaveCriticalSection(&workData.cs);
 #else
-    pthread_mutex_unlock(&workdata.cs);
+    pthread_mutex_unlock(&workData.cs);
 #endif
 		jsonObject_freeObject(jsonReturnValue);
 	}
@@ -438,7 +477,7 @@ int jhMiner_workerThread_getwork(int threadIndex)
 #ifdef _WIN32
     EnterCriticalSection(&workData.cs);
 #else
-    pthread_mutex_lock(&workdata.cs);
+    pthread_mutex_lock(&workData.cs);
 #endif
 		memcpy(localBlockData, workData.workEntry[0].data, 128);
 		//seed = workData.seed;
@@ -446,7 +485,7 @@ int jhMiner_workerThread_getwork(int threadIndex)
 #ifdef _WIN32
 		LeaveCriticalSection(&workData.cs);
 #else
-    pthread_mutex_unlock(&workdata.cs);
+    pthread_mutex_unlock(&workData.cs);
 #endif
 		// swap endianess
 		for(uint32 i=0; i<128/4; i++)
@@ -484,7 +523,7 @@ int jhMiner_workerThread_xpt(int threadIndex)
 #ifdef _WIN32
 		EnterCriticalSection(&workData.cs);
 #else
-    pthread_mutex_lock(&workdata.cs);
+    pthread_mutex_lock(&workData.cs);
 #endif
 		memcpy(localBlockData, workData.workEntry[threadIndex].data, 128);
 		memcpy(serverData, workData.workEntry[threadIndex].serverData, 32);
@@ -492,7 +531,7 @@ int jhMiner_workerThread_xpt(int threadIndex)
 #ifdef _WIN32
 		LeaveCriticalSection(&workData.cs);
 #else
-    pthread_mutex_unlock(&workdata.cs);
+    pthread_mutex_unlock(&workData.cs);
 #endif
 		// convert raw data into primecoin block
 		primecoinBlock_t primecoinBlock = {0};
@@ -565,7 +604,7 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing URL after -o option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			if( strstr(argv[cIdx], "http://") )
 				commandlineInput.host = fStrDup(strstr(argv[cIdx], "http://")+7);
@@ -585,7 +624,7 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing username/workername after -u option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			commandlineInput.workername = fStrDup(argv[cIdx], 64);
 			cIdx++;
@@ -596,7 +635,7 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing password after -p option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			commandlineInput.workerpass = fStrDup(argv[cIdx], 64);
 			cIdx++;
@@ -607,13 +646,13 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing thread number after -t option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			commandlineInput.numThreads = atoi(argv[cIdx]);
 			if( commandlineInput.numThreads < 1 || commandlineInput.numThreads > 128 )
 			{
 				printf("-t parameter out of range");
-				ExitProcess(0);
+				exit(0);
 			}
 			cIdx++;
 		}
@@ -623,13 +662,13 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing number after -s option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			commandlineInput.sieveSize = atoi(argv[cIdx]);
 			if( commandlineInput.sieveSize < 200000 || commandlineInput.sieveSize > 10000000 )
 			{
 				printf("-s parameter out of range, must be between 200000 - 10000000");
-				ExitProcess(0);
+				exit(0);
 			}
 			cIdx++;
 		}
@@ -639,13 +678,13 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing number after -d option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			commandlineInput.sievePercentage = atoi(argv[cIdx]);
 			if( commandlineInput.sievePercentage < 1 || commandlineInput.sievePercentage > 100 )
 			{
 				printf("-d parameter out of range, must be between 1 - 100");
-				ExitProcess(0);
+				exit(0);
 			}
 			cIdx++;
 		}
@@ -655,13 +694,13 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing number after -r option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			commandlineInput.roundSievePercentage = atoi(argv[cIdx]);
 			if( commandlineInput.roundSievePercentage < 3 || commandlineInput.roundSievePercentage > 97 )
 			{
 				printf("-r parameter out of range, must be between 3 - 97");
-				ExitProcess(0);
+				exit(0);
 			}
 			cIdx++;
 		}
@@ -671,31 +710,31 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			if( cIdx >= argc )
 			{
 				printf("Missing number after -primes option\n");
-				ExitProcess(0);
+				exit(0);
 			}
 			commandlineInput.sievePrimeLimit = atoi(argv[cIdx]);
 			if( commandlineInput.sievePrimeLimit < 300 || commandlineInput.sievePrimeLimit > 200000000 )
 			{
 				printf("-primes parameter out of range, must be between 300 - 200000000");
-				ExitProcess(0);
+				exit(0);
 			}
 			cIdx++;
 		}
 		else if( memcmp(argument, "-help", 6)==0 || memcmp(argument, "--help", 7)==0 )
 		{
 			jhMiner_printHelp();
-			ExitProcess(0);
+			exit(0);
 		}
 		else
 		{
 			printf("'%s' is an unknown option.\nType jhPrimeminer.exe --help for more info\n", argument); 
-			ExitProcess(-1);
+			exit(-1);
 		}
 	}
 	if( argc <= 1 )
 	{
 		jhMiner_printHelp();
-		ExitProcess(0);
+		exit(0);
 	}
 }
 
@@ -705,8 +744,26 @@ void jhMiner_parseCommandline(int argc, char **argv)
 int jhMiner_main_getworkMode()
 {
 	// start threads
+#ifdef _WIN32
 	for(sint32 threadIdx=0; threadIdx<commandlineInput.numThreads; threadIdx++)
-		CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)jhMiner_workerThread_getwork, (LPVOID)threadIdx, 0, 0);
+    CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)jhMiner_workerThread_getwork, (LPVOID)threadIdx, 0, 0);
+#else
+  pthread_t threads[commandlineInput.numThreads];
+  pthread_attr_t threadAttr;
+  pthread_attr_init(&threadAttr);
+  // Set the stack size of the thread
+  pthread_attr_setstacksize(&threadAttr, 120*1024);
+
+  // free resources of thread upon return
+  pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
+  for(sint32 threadIdx=0; threadIdx<commandlineInput.numThreads; threadIdx++) {
+    pthread_create(&threads[threadIdx], 
+                   &threadAttr, 
+                   jhMiner_workerThread_getwork, 
+                   threadIdx);
+  }
+  pthread_attr_destroy(&threadAttr);
+#endif
 	// main thread, query work every 8 seconds
 	sint32 loopCounter = 0;
 	while( true )
@@ -727,7 +784,7 @@ int jhMiner_main_getworkMode()
 			double primeDifficulty = (double)bestDifficulty / (double)0x1000000;
 			if( workData.workEntry[0].dataIsValid )
 			{
-				primeStats.bestPrimeChainDifficultySinceLaunch = max(primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
+				primeStats.bestPrimeChainDifficultySinceLaunch = std::max<double>((double)primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
 				printf("primes/s: %d best difficulty: %f record: %f\n", (sint32)primesPerSecond, (float)primeDifficulty, (float)primeStats.bestPrimeChainDifficultySinceLaunch);
 			}
 		}		
@@ -889,7 +946,7 @@ static void input_thread()
 
 	while (1) {
 		int input;
-		input = _getch();		
+		input = getchar();		
 		switch (input) {
 		case 'q': case 'Q': case 3: //case 27:
 			std::exit(0);
@@ -923,7 +980,7 @@ static void input_thread()
 			break;
 		case 0: case 224:
 			{
-				input = _getch();	
+				input = getchar();	
 				switch (input)
 				{
 				case 72: // key up
@@ -1021,7 +1078,7 @@ int jhMiner_main_xptMode()
 			float primeDifficulty = GetChainDifficulty(bestDifficulty);
 			if( workData.workEntry[0].dataIsValid )
 			{
-				primeStats.bestPrimeChainDifficultySinceLaunch = max(primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
+				primeStats.bestPrimeChainDifficultySinceLaunch = std::max<double>((double)primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
 				//double sharesPerHour = ((double)valid_shares / totalRunTime) * 3600000.0;
 				float shareValuePerHour = primeStats.fShareValue / totalRunTime * 3600000.0;
 				float fiveSharePerPeriod = ((double)(primeStats.chainCounter[5] - lastFiveChainCount) / statsPassedTime) * 3600000.0;
@@ -1138,10 +1195,8 @@ int main(int argc, char **argv)
 {
 	// setup some default values
 	commandlineInput.port = 10034;
-	SYSTEM_INFO sysinfo;
-	GetSystemInfo( &sysinfo );
-	commandlineInput.numThreads = sysinfo.dwNumberOfProcessors;
-	commandlineInput.numThreads = max(commandlineInput.numThreads, 1);
+  commandlineInput.numThreads = getNumThreads();
+	commandlineInput.numThreads = std::max(commandlineInput.numThreads, 1);
 	commandlineInput.sieveSize = 1500000; // default maxSieveSize
 	commandlineInput.sievePercentage = 15; // default 
 	commandlineInput.roundSievePercentage = 80; // default 
@@ -1158,7 +1213,7 @@ int main(int argc, char **argv)
 	if( commandlineInput.host == NULL )
 	{
 		printf("Missing -o option\n");
-		ExitProcess(-1);
+		exit(-1);
 	}
 	//CRYPTO_set_mem_ex_functions(mallocEx, reallocEx, freeEx);
 	
@@ -1194,7 +1249,7 @@ int main(int argc, char **argv)
 	if( hostInfo == NULL )
 	{
 		printf("Cannot resolve '%s'. Is it a valid URL?\n", commandlineInput.host);
-		ExitProcess(-1);
+		exit(-1);
 	}
 	void** ipListPtr = (void**)hostInfo->h_addr_list;
 	uint32 ip = 0xFFFFFFFF;

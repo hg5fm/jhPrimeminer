@@ -16,6 +16,7 @@ void jsonBuilder_buildObjectString(fStr_t* fStr_output, jsonObject_t* jsonObject
 			fStr_append(fStr_output, "false");
 		return;
 	}
-	
+#ifdef _MSC_VER
 	__debugbreak();
+#endif
 }

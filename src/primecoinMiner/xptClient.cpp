@@ -11,9 +11,9 @@ SOCKET xptClient_openConnection(char *IP, int Port)
 	addr.sin_addr.s_addr=inet_addr(IP);
 	int result = connect(s,(SOCKADDR*)&addr,sizeof(SOCKADDR_IN));
 #else
-sockfd xptClient_openConnection(char *IP, int Port)
+int xptClient_openConnection(char *IP, int Port)
 {
-  sockfd s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	struct sockaddr_in addr;
 	memset(&addr, 0, sizeof(sockaddr_in));
 	addr.sin_family = AF_INET;
@@ -38,7 +38,7 @@ xptClient_t* xptClient_connect(jsonRequestTarget_t* target, uint32 payloadNum)
 #ifdef _WIN32
   SOCKET clientSocket = xptClient_openConnection(target->ip, target->port);
 #else
-  sockfd clientSocket = xptClient_openConnection(target->ip, target->port);
+  int clientSocket = xptClient_openConnection(target->ip, target->port);
 #endif
 	if( clientSocket == 0 )
 		return NULL;
@@ -61,7 +61,7 @@ xptClient_t* xptClient_connect(jsonRequestTarget_t* target, uint32 payloadNum)
 	xptClient->recvBuffer = xptPacketbuffer_create(64*1024);
 	fStrCpy(xptClient->username, target->authUser, 127);
 	fStrCpy(xptClient->password, target->authPass, 127);
-	xptClient->payloadNum = max(1, min(127, payloadNum));
+	xptClient->payloadNum = std::max<uint32>(1, std::min<uint32>(127, payloadNum));
 #ifdef _WIN32
   InitializeCriticalSection(&xptClient->cs_shareSubmit);
 #else
@@ -98,8 +98,8 @@ void xptClient_free(xptClient_t* xptClient)
  */
 void xptClient_sendWorkerLogin(xptClient_t* xptClient)
 {
-	uint32 usernameLength = min(127, fStrLen(xptClient->username));
-	uint32 passwordLength = min(127, fStrLen(xptClient->password));
+	uint32 usernameLength = std::min(127, fStrLen(xptClient->username));
+	uint32 passwordLength = std::min(127, fStrLen(xptClient->password));
 	// build the packet
 	bool sendError = false;
 	xptPacketbuffer_beginWritePacket(xptClient->sendBuffer, XPT_OPC_C_AUTH_REQ);

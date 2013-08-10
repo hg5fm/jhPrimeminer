@@ -1,11 +1,29 @@
 #ifdef _WIN32
+#define NOMINMAX
+#include <algorithm>
 #pragma comment(lib,"Ws2_32.lib")
 #include<Winsock2.h>
 #include<ws2tcpip.h>
 #else
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <sys/fcntl.h>
+#include <unistd.h>
+#include <stdint.h>
+#define Sleep sleep
 #include <pthread.h>
+
+uint32_t GetTickCount(void) { 
+  struct timespec now;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  return now.tv_nsec/1000000;
+}
+
+typedef uint8_t BYTE;
+typedef uint32_t DWORD;
 #endif
 #include"jhlib/JHLib.h"
 
@@ -163,7 +181,11 @@ typedef struct
 	volatile float nChainHit;
 	volatile float nPrevChainHit;
 	volatile unsigned int nPrimorialMultiplier;
-	CRITICAL_SECTION cs;
+#ifdef _WIN32
+  CRITICAL_SECTION cs;
+#else
+  pthread_mutex_t cs;
+#endif
 
 	// since we can generate many (useless) primes ultra fast if we simply set sieve size low, 
 	// its better if we only count primes with at least a given difficulty
@@ -213,7 +235,9 @@ void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex);
 extern volatile int total_shares;
 extern volatile int valid_shares;
 
+#ifdef _WIN32
 extern __declspec( thread ) BN_CTX* pctx;
+#endif
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif

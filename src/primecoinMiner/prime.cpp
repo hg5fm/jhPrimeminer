@@ -1603,7 +1603,7 @@ bool CSieveOfEratosthenes::Weave()
     for (unsigned int j = 0; j < nArrayRounds; j++)
     {
         const unsigned int nMinMultiplier = nL1CacheElements * j;
-        const unsigned int nMaxMultiplier = min(nL1CacheElements * (j + 1), nSieveSize);
+        const unsigned int nMaxMultiplier = std::min(nL1CacheElements * (j + 1), nSieveSize);
 
 		//TODO: stop on new block
 		//if (pindexPrev != pindexBest)

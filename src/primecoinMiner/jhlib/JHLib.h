@@ -7,6 +7,7 @@
 #include<Windows.h>
 #endif
 #include<math.h>
+#include <algorithm>
 
 typedef unsigned long long 	uint64;
 typedef signed long long	sint64;
@@ -21,6 +22,7 @@ typedef unsigned char 	uint8;
 typedef signed char 	sint8;
 
 #define JHCALLBACK	__fastcall
+
 
 void* _ex1_malloc(int size);
 void* _ex1_realloc(void* old, int size);

@@ -1,6 +1,6 @@
 #include"global.h"
 
-
+#ifdef _WIN32
 SOCKET jsonClient_openConnection(char *IP, int Port)
 {
 	SOCKET s=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
@@ -10,7 +10,18 @@ SOCKET jsonClient_openConnection(char *IP, int Port)
 	addr.sin_port=htons(Port);
 	addr.sin_addr.s_addr=inet_addr(IP);
 	int result = connect(s,(SOCKADDR*)&addr,sizeof(SOCKADDR_IN));
-	if( result )
+#else
+int jsonClient_openConnection(char *IP, int Port)
+{
+  int s=socket(AF_INET,SOCK_STREAM,IPPROTO_TCP);
+	sockaddr_in addr;
+	memset(&addr,0,sizeof(sockaddr_in));
+	addr.sin_family=AF_INET;
+	addr.sin_port=htons(Port);
+	addr.sin_addr.s_addr=inet_addr(IP);
+	int result = connect(s,(sockaddr*)&addr,sizeof(sockaddr_in));
+#endif
+  if( result )
 	{
 		return 0;
 	}
@@ -117,7 +128,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 {
 	*errorCode = JSON_ERROR_NONE;
 	// create connection to host
-	SOCKET serverSocket = jsonClient_openConnection(server->ip, server->port);
+#ifdef _WIN32
+  SOCKET serverSocket = jsonClient_openConnection(server->ip, server->port);
+#else
+  int serverSocket = jsonClient_openConnection(server->ip, server->port);
+#endif
 	if( serverSocket == 0 )
 	{
 		*errorCode = JSON_ERROR_HOST_NOT_FOUND;
@@ -174,7 +189,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 		{
 			printf("JSON-RPC warning: Response is larger than buffer\n");
 			// todo: Eventually we should dynamically enlarge the buffer
-			closesocket(serverSocket);
+#ifdef _WIN32
+      closesocket(serverSocket);
+#else
+      close(serverSocket);
+#endif
 			fStr_free(fStr_jsonRequestData);
 			return NULL;
 		}
@@ -215,9 +234,9 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 			{
 				// did we receive the end of the header already?
 				sint32 scanStart = (sint32)recvIndex - (sint32)r;
-				scanStart = max(scanStart-8, 0);
+        scanStart = std::max(scanStart-8, 0);
 				sint32 scanEnd = (sint32)(recvIndex);
-				scanEnd = max(scanEnd-4, 0);
+				scanEnd = std::max(scanEnd-4, 0);
 				for(sint32 s=scanStart; s<=scanEnd; s++)
 				{
 					// is header end?
@@ -229,7 +248,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 						if( s == 0 )
 						{
 							printf("JSON-RPC warning: Server sent headerless HTTP response\n");
-							closesocket(serverSocket);
+#ifdef _WIN32
+              closesocket(serverSocket);
+#else
+              close(serverSocket);
+#endif
 							fStr_free(fStr_jsonRequestData);
 							return NULL;
 						}
@@ -263,7 +286,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 								if( httpCode == 401 )
 								{
 									printf("JSON-RPC: Request failed, authorization required (wrong login data)\n");
+#ifdef _WIN32
 									closesocket(serverSocket);
+#else
+                  close(serverSocket);
+#endif
 									fStr_free(fStr_jsonRequestData);
 									*errorCode = httpCode + 1000;
 									return NULL;
@@ -284,7 +311,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 						if( contentLength <= 0 )
 						{
 							printf("JSON-RPC warning: Content-Length header field not present\n");
+#ifdef _WIN32
 							closesocket(serverSocket);
+#else
+              close(serverSocket);
+#endif
 							fStr_free(fStr_jsonRequestData);
 							return NULL;
 						}
@@ -315,7 +346,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 		// close connection (we kind of force this)
 		if( serverSocket != 0 )
 		{
-			closesocket(serverSocket);
+#ifdef _WIN32
+  		closesocket(serverSocket);
+#else
+      close(serverSocket);
+#endif
 			serverSocket = 0;
 		}
 		// get request result data
@@ -344,7 +379,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 	// close connection
 	if( serverSocket != 0 )
 	{
-		closesocket(serverSocket);
+#ifdef _WIN32
+  	closesocket(serverSocket);
+#else
+    close(serverSocket);
+#endif
 		serverSocket = 0;
 	}
 	// free everything again

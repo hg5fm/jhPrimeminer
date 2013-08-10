@@ -31,8 +31,8 @@ void xptPacketbuffer_free(xptPacketbuffer_t* pb)
 void xptPacketbuffer_changeSizeLimit(xptPacketbuffer_t* pb, uint32 sizeLimit)
 {
 	pb->bufferLimit = sizeLimit;
-	pb->bufferSize = min(pb->bufferSize, pb->bufferLimit);
-	pb->parserIndex = min(pb->parserIndex, pb->bufferLimit);
+	pb->bufferSize = std::min(pb->bufferSize, pb->bufferLimit);
+	pb->parserIndex = std::min(pb->parserIndex, pb->bufferLimit);
 	pb->buffer = (uint8*)realloc(pb->buffer, pb->bufferLimit);
 }
 

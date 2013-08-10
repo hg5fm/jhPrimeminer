@@ -10,7 +10,11 @@
 #endif
 
 //#include "main.h"
+#ifdef _WIN32
 #include "mpirxx.h"
+#else
+#include <gmpxx.h>
+#endif
 
 extern unsigned int nMaxSieveSize;
 extern unsigned int nSievePercentage;
@@ -85,7 +89,7 @@ enum // prime chain type
 {
 	PRIME_CHAIN_CUNNINGHAM1 = 1u,
 	PRIME_CHAIN_CUNNINGHAM2 = 2u,
-	PRIME_CHAIN_BI_TWIN     = 3u,
+	PRIME_CHAIN_BI_TWIN     = 3u
 };
 // bool CheckPrimeProofOfWork(uint256 hashBlockHeader, unsigned int nBits, const CBigNum& bnPrimeChainMultiplier, unsigned int& nChainType, unsigned int& nChainLength);
 

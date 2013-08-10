@@ -1,3 +1,7 @@
+#ifndef _WIN32
+#include <stdint.h>
+typedef uint32_t DWORD;
+#endif
 
 typedef struct  
 {
@@ -9,7 +13,7 @@ typedef struct
 	_HashTable_uint32Iterable_entry_t *entrys;
 	unsigned int *itemKeyArray;
 	void **itemValueArray;
-	DWORD size;
+  DWORD size;
 	DWORD count;
 }hashTable_t;
 

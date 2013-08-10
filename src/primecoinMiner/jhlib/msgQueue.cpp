@@ -32,7 +32,11 @@ void msgQueue_init()
 /*
  * Creates an unconfigured and non-active message queue.
  */
+#ifdef _WIN32
 msgQueue_t* msgQueue_create(sint32 nameId, void (JHCALLBACK *messageProc)(msgQueue_t *msgQueue, sint32 msgId, uint32 param1, uint32 param2, void* data))
+#else
+msgQueue_t* msgQueue_create(sint32 nameId, void *messageProc(msgQueue_t *msgQueue, sint32 msgId, uint32 param1, uint32 param2, void* data))
+#endif
 {
 	msgQueue_t *msgQueue = (msgQueue_t*)malloc(sizeof(msgQueue_t));
 	RtlZeroMemory(msgQueue, sizeof(msgQueue_t));
