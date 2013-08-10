@@ -1,6 +1,6 @@
 CXX = g++
 CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++0x -lrt -static
-LIBS = -lgmp -lssl -pthread
+LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread
 LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include
 
@@ -40,4 +40,5 @@ jhprimeminer: $(OBJS:obj/%=obj/%)
 
 clean:
 	-rm -f jhprimeminer
-	-rm -f obj/*
+	-rm -f obj/*.o
+	-rm -f jhlib/*.o
