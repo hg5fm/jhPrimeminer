@@ -45,7 +45,7 @@ typedef struct
   // shares to submit
 	CRITICAL_SECTION cs_shareSubmit;
 #else
-  pthread_mutex_t cs_share_Submit;
+  pthread_mutex_t cs_shareSubmit;
 #endif
 	simpleList_t* list_shareSubmitQueue;
 }xptClient_t;

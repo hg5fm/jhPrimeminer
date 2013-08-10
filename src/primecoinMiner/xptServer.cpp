@@ -1,4 +1,12 @@
 #include"global.h"
+#ifndef _WIN32
+// lazy workaround
+typedef int SOCKET;
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+#define SOCKET_ERROR -1
+#define closesocket close
+#endif
 
 /*
  * Creates a new x.pushthrough server instance that listens on the specified port
@@ -13,7 +21,7 @@ xptServer_t* xptServer_create(uint16 port)
 	memset(&addr,0,sizeof(SOCKADDR_IN));
 	addr.sin_family=AF_INET;
 	addr.sin_port=htons(port);
-	addr.sin_addr.s_addr=ADDR_ANY;
+	addr.sin_addr.s_addr=INADDR_ANY;
 	if( bind(s,(SOCKADDR*)&addr,sizeof(SOCKADDR_IN)) == SOCKET_ERROR )
 	{
 		closesocket(s);
@@ -42,7 +50,14 @@ xptServerClient_t* xptServer_newClient(xptServer_t* xptServer, SOCKET s)
 	// set socket as non-blocking
 	unsigned int nonblocking=1;
 	unsigned int cbRet;
+#ifdef _WIN32
 	WSAIoctl(s, FIONBIO, &nonblocking, sizeof(nonblocking), NULL, 0, (LPDWORD)&cbRet, NULL, NULL);
+#else
+  int flags, err;
+  flags = fcntl(s, F_GETFL, 0); 
+  flags |= O_NONBLOCK;
+  err = fcntl(s, F_SETFL, flags); //ignore errors for now..
+#endif
 	// return client object
 	return xptServerClient;
 }
@@ -171,7 +186,7 @@ void xptServer_checkForNewBlocks(xptServer_t* xptServer)
  */
 void xptServer_startProcessing(xptServer_t* xptServer)
 {
-	FD_SET fd;
+	fd_set fd;
 	timeval sTimeout;
 	sTimeout.tv_sec = 0;
 	sTimeout.tv_usec = 250000;

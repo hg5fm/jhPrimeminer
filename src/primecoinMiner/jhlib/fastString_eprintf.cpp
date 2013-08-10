@@ -316,7 +316,7 @@ int esprintf_b(char *out, signed long long value, int padRight, int padZero, int
 	{
 		int r = 0;
 		int totalDigits = negative + dl;
-		totalDigits = min(totalDigits, width);
+		totalDigits = std::min(totalDigits, width);
 		if( dl >= totalDigits )
 			negative = 0;
 		int NumberDigits = totalDigits - negative;
@@ -382,7 +382,7 @@ int esprintf_u(char *out, unsigned int value, int padRight, int padZero, int wid
 	{
 		int r = 0;
 		int totalDigits = dl;
-		totalDigits = min(totalDigits, width);
+		totalDigits = std::min(totalDigits, width);
 		int NumberDigits = totalDigits;
 		int PadDigits = width - totalDigits;
 		char PadDigit = ' ';
@@ -430,7 +430,7 @@ int esprintf_X(char *out, unsigned int value, int padRight, int padZero, int wid
 	{
 		int r = 0;
 		int totalDigits = dl;
-		totalDigits = min(totalDigits, width);
+		totalDigits = std::min(totalDigits, width);
 		int NumberDigits = totalDigits;
 		int PadDigits = width - totalDigits;
 		char PadDigit = ' ';
@@ -464,8 +464,10 @@ int esprintf_X(char *out, unsigned int value, int padRight, int padZero, int wid
  */
 #ifdef _WIN64
 void __cdecl _esprintf(char *out, char *format, uint64 *param, unsigned int *lengthOut)
-#else
+#elif defined (_WIN32)
 void __cdecl _esprintf(char *out, char *format, unsigned int *param, unsigned int *lengthOut)
+#else // gcc
+void __attribute__((cdecl)) _esprintf(char *out, char *format, unsigned int *param, unsigned int *lengthOut) 
 #endif
 {
 	if( lengthOut )
@@ -659,11 +661,15 @@ void esprintf(char *out, char *format, ...)
 		param++; // skip first parameter
 		unsigned int formattedLength = 0;
 		_esprintf(out, format, param, &formattedLength);
-	#else
+#else
+#ifdef _WIN32
 		unsigned int *param = (unsigned int*)_ADDRESSOF(format);
+#else
+  unsigned int *param = (unsigned int*)tmp_addressof(format);
+#endif
 		param++; // skip first parameter
 		unsigned int formattedLength = 0;
 		_esprintf(out, format, param, &formattedLength);
-	#endif
+#endif
 
 }

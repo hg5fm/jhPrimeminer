@@ -14,8 +14,13 @@
 uint32* vPrimesTwoInverse;
 uint32 vPrimesSize = 0;
 
+#ifdef _WIN32
 __declspec( thread ) BN_CTX* pctx = NULL;
+#else
+  BN_CTX* pctx = NULL;
+#endif
 
+/* not used and gives errors because of LARGE_INTEGER, so disable for now
 // changed to return the ticks since reboot
 // doesnt need to be the correct time, just a more or less random input value
 uint64 GetTimeMicros()
@@ -23,7 +28,7 @@ uint64 GetTimeMicros()
 	LARGE_INTEGER t;
 	QueryPerformanceCounter(&t);
 	return (uint64)t.QuadPart;
-}
+}*/
 
 
 std::vector<unsigned int> vPrimes;
@@ -560,7 +565,11 @@ bool TargetSetFractionalDifficulty(uint64 nFractionalDifficulty, unsigned int& n
 
 std::string TargetToString(unsigned int nBits)
 {
+#ifdef _WIN32
 	__debugbreak(); // return strprintf("%02x.%06x", TargetGetLength(nBits), TargetGetFractional(nBits));
+#else
+  raise(SIGTRAP); // not sure if this is really portable
+#endif
 	return NULL; // todo
 }
 
@@ -1009,7 +1018,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 			primeStats.foundShareCount ++;
 			primeStats.fShareValue += shareValue;
 			primeStats.fBlockShareValue += shareValue;
-			RtlZeroMemory(blockRawData, 256);
+			memset(blockRawData, 0, 256);
 			multipleShare = true;
 		}
 		//if(TargetGetLength(nProbableChainLength) >= 1)

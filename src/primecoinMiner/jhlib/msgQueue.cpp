@@ -1,4 +1,7 @@
 #include"JHlib.h"
+#ifndef _WIN32
+#include <pthread.h>
+#endif
 
 typedef struct  
 {
@@ -23,7 +26,7 @@ void msgQueue_init()
 #ifdef _WIN32
 	InitializeCriticalSection(&messageQueueEnvironment.criticalSection);
 #else
-  pthread_mutex_init(&messageQueueEnvironment.criticalSection);
+  pthread_mutex_init(&messageQueueEnvironment.criticalSection, NULL);
 #endif
 	hashTable_init(&messageQueueEnvironment.ht_msgQueues, 4);
 	messageQueueEnvironment.uniqueNameCounter = 0x70000000;
@@ -39,12 +42,12 @@ msgQueue_t* msgQueue_create(sint32 nameId, void *messageProc(msgQueue_t *msgQueu
 #endif
 {
 	msgQueue_t *msgQueue = (msgQueue_t*)malloc(sizeof(msgQueue_t));
-	RtlZeroMemory(msgQueue, sizeof(msgQueue_t));
+	memset(msgQueue, 0, sizeof(msgQueue_t));
 	// setup
 #ifdef _WIN32
 	InitializeCriticalSection(&msgQueue->criticalSection);
 #else
-  pthread_mutex_init(&msgQueue->criticalSection);
+  pthread_mutex_init(&msgQueue->criticalSection, NULL);
 #endif
 	msgQueue->first = NULL;
 	msgQueue->last = NULL;
@@ -227,7 +230,11 @@ bool msgQueue_postMessage(sint32 destNameId, sint32 msgId, uint32 param1, uint32
 		if( msgQueue->last == NULL )
 		{
 			if( msgQueue->first != NULL )
+#ifdef _WIN32
 				__debugbreak(); //BUG!
+#else
+        raise(SIGTRAP);
+#endif
 			// new entry
 			msg->next = NULL;
 			msgQueue->first = msg;
@@ -237,7 +244,11 @@ bool msgQueue_postMessage(sint32 destNameId, sint32 msgId, uint32 param1, uint32
 		{
 			// append to last
 			if( msgQueue->last->next )
+#ifdef _WIN32
 				__debugbreak();
+#else
+        raise(SIGTRAP);
+#endif
 			msg->next = NULL;
 			msgQueue->last->next = msg;
 			msgQueue->last = msg;

@@ -10,9 +10,11 @@
 #include <sys/select.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <signal.h>
 #define Sleep sleep
 #include <pthread.h>
 
@@ -237,7 +239,10 @@ extern volatile int valid_shares;
 
 #ifdef _WIN32
 extern __declspec( thread ) BN_CTX* pctx;
+#else
+extern BN_CTX* pctx;
 #endif
+
 #ifndef ARRAY_SIZE
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 #endif

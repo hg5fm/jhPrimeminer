@@ -294,7 +294,7 @@ bool jhMiner_pushShare_primecoin(uint8 data[256], primecoinBlock_t* primecoinBlo
 			{
 				total_shares++;
 				// the server says no to this share :(
-				printf("Server rejected share (BlockHeight: %d/%d nBits: 0x%08X)\n", primecoinBlock->serverData.blockHeight, jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex), primecoinBlock->serverData.client_shareBits);
+				printf("Server rejected share (BlockHeight: %lu/%lu nBits: 0x%08luX)\n", primecoinBlock->serverData.blockHeight, jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex), primecoinBlock->serverData.client_shareBits);
 				jsonObject_freeObject(jsonReturnValue);
 				return false;
 			}
@@ -465,8 +465,14 @@ uint32 jhMiner_getCurrentWorkBlockHeight(sint32 threadIndex)
 /*
  * Worker thread mainloop for getwork() mode
  */
+#ifdef _WIN32
 int jhMiner_workerThread_getwork(int threadIndex)
 {
+#else
+void* jhMiner_workerThread_getwork(void *arg)
+{
+  int threadIndex = *(sint32 *)arg;
+#endif
 	while( true )
 	{
 		uint8 localBlockData[128];
@@ -511,8 +517,14 @@ int jhMiner_workerThread_getwork(int threadIndex)
 /*
  * Worker thread mainloop for xpt() mode
  */
+#ifdef _WIN32
 int jhMiner_workerThread_xpt(int threadIndex)
 {
+#else
+void *jhMiner_workerThread_xpt(void *arg)
+{
+  int threadIndex = *(int *)arg;
+#endif
 	while( true )
 	{
 		uint8 localBlockData[128];
@@ -760,7 +772,7 @@ int jhMiner_main_getworkMode()
     pthread_create(&threads[threadIdx], 
                    &threadAttr, 
                    jhMiner_workerThread_getwork, 
-                   threadIdx);
+                   (void *)&threadIdx);
   }
   pthread_attr_destroy(&threadAttr);
 #endif
@@ -821,12 +833,14 @@ void MultiplierAutoAdjust()
 	// Primecoin: dynamic adjustment of primorial multiplier
 	if (fIncrementPrimorial)
 	{
-		if (!PrimeTableGetNextPrime((unsigned int)  primeStats.nPrimorialMultiplier))
+    // explicit cast to ref removes g++ warning but might be dumb, dunno
+		if (!PrimeTableGetNextPrime((unsigned int &)  primeStats.nPrimorialMultiplier))
 			error("PrimecoinMiner() : primorial increment overflow");
 	}
 	else if (primeStats.nPrimorialMultiplier > 7)
 	{
-		if (!PrimeTableGetPreviousPrime((unsigned int) primeStats.nPrimorialMultiplier))
+    // explicit cast to ref removes g++ warning but might be dumb, dunno
+		if (!PrimeTableGetPreviousPrime((unsigned int &) primeStats.nPrimorialMultiplier))
 			error("PrimecoinMiner() : primorial decrement overflow");
 	}
 }
@@ -835,9 +849,15 @@ BYTE nRoundSievePercentage = 75;
 bool bOptimalL1Search = true;
 bool bEnablenPrimorialMultiplierTuning = true;
 
+#ifdef _WIN32
 int AutoTuningWorkerThread(bool bEnabled)
+#else
+void *AutoTuningWorkerThread(void * arg)
+#endif
 {
-
+#ifndef _WIN32
+  bool bEnabled = *(bool *)arg;
+#endif
 	DWORD startTime = GetTickCount();
 	
 	unsigned int nL1CacheElementsStart = 100000;
@@ -923,7 +943,8 @@ int AutoTuningWorkerThread(bool bEnabled)
 
 		if (ratio > nRoundSievePercentage + 5)
 		{
-			if (!PrimeTableGetNextPrime((unsigned int)  primeStats.nPrimorialMultiplier))
+      // explicit cast to ref removes g++ warning but might be dumb, dunno
+			if (!PrimeTableGetNextPrime((unsigned int &)  primeStats.nPrimorialMultiplier))
 				error("PrimecoinMiner() : primorial increment overflow");
 			printf( "Sieve/Test ratio: %.01f / %.01f %%  - New PrimorialMultiplier: %u\n", ratio, 100.0 - ratio,  primeStats.nPrimorialMultiplier);
 		} else 
@@ -931,7 +952,8 @@ int AutoTuningWorkerThread(bool bEnabled)
 		{
 			if ( primeStats.nPrimorialMultiplier > 2)
 			{
-				if (!PrimeTableGetPreviousPrime((unsigned int) primeStats.nPrimorialMultiplier))
+        // explicit cast to ref removes g++ warning but might be dumb, dunno
+				if (!PrimeTableGetPreviousPrime((unsigned int &) primeStats.nPrimorialMultiplier))
 					error("PrimecoinMiner() : primorial decrement overflow");
 			}
 			printf( "Sieve/Test ratio: %.01f / %.01f %%  - New PrimorialMultiplier: %u\n", ratio, 100.0 - ratio,  primeStats.nPrimorialMultiplier);
@@ -941,7 +963,11 @@ int AutoTuningWorkerThread(bool bEnabled)
 
 }
 
+#ifdef _WIN32
 static void input_thread()
+#else
+void *input_thread(void *)
+#endif
 {
 
 	while (1) {
@@ -950,15 +976,19 @@ static void input_thread()
 		switch (input) {
 		case 'q': case 'Q': case 3: //case 27:
 			std::exit(0);
+#ifdef _WIN32
 			return;
+#endif
 			break;
 		case '[':
-			if (!PrimeTableGetPreviousPrime((unsigned int) primeStats.nPrimorialMultiplier))
+      // explicit cast to ref removes g++ warning but might be dumb, dunno
+			if (!PrimeTableGetPreviousPrime((unsigned int &) primeStats.nPrimorialMultiplier))
 				error("PrimecoinMiner() : primorial decrement overflow");	
 			printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
 			break;
 		case ']':
-			if (!PrimeTableGetNextPrime((unsigned int)  primeStats.nPrimorialMultiplier))
+      // explicit cast to ref removes g++ warning but might be dumb, dunno
+			if (!PrimeTableGetNextPrime((unsigned int &)  primeStats.nPrimorialMultiplier))
 				error("PrimecoinMiner() : primorial increment overflow");
 			printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
 			break;
@@ -1010,8 +1040,9 @@ static void input_thread()
 
 		}
 	}
-
+#ifdef _WIN32
 	return;
+#endif
 }
 
 
@@ -1034,7 +1065,8 @@ int jhMiner_main_xptMode()
 #else
     // start the Auto Tuning thread
   pthread_t threads[commandlineInput.numThreads + 2];
-  pthread_create(&threads[0], NULL, AutoTuningWorkerThread, NULL);
+  const bool enabled = true;
+  pthread_create(&threads[0], NULL, AutoTuningWorkerThread, (void *)&enabled);
   pthread_create(&threads[1], NULL, input_thread, NULL);
   pthread_attr_t threadAttr;
   pthread_attr_init(&threadAttr);
@@ -1045,13 +1077,12 @@ int jhMiner_main_xptMode()
   pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
 	
   // start threads
-	for(uint32_t threadIdx=2; threadIdx<commandlineInput.numThreads; threadIdx++)
+	for(int32_t threadIdx=2; threadIdx<commandlineInput.numThreads; threadIdx++)
 	{
 		pthread_create(&threads[threadIdx], 
-                   threadAttr, 
+                   &threadAttr, 
                    jhMiner_workerThread_xpt, 
-                   NULL);
-    pthread_setsched(&threads[threadIdx], SCHED_OTHER);
+                   (void *)&threadIdx);
 	}
   pthread_attr_destroy(&threadAttr);
 #endif
@@ -1169,12 +1200,12 @@ int jhMiner_main_xptMode()
 					double poolDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBitsShare);
 					double blockDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBits);
 					printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
-					printf("---- New Block: %u - Diff: %.06f / %.06f\n", workData.xptClient->blockWorkInfo.height, blockDiff, poolDiff);
+					printf("---- New Block: %lu - Diff: %.06f / %.06f\n", workData.xptClient->blockWorkInfo.height, blockDiff, poolDiff);
 					printf("---- Total/Valid shares: [ %d / %d ]  -  Max diff: %.05f\n",valid_shares, total_shares, primeStats.bestPrimeChainDifficultySinceLaunch);
 					for (int i = 6; i <= 10; i++)
 					{
 						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0;
-						printf("---- %d-chain count: %u  -  %dch/h: %.03f - Share Value: %00.03f\n", 
+						printf("---- %d-chain count: %lu  -  %dch/h: %.03f - Share Value: %00.03f\n", 
 							i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
 					}
 					printf("---- Share Value for the last block: %.06f\n", primeStats.fBlockShareValue);
@@ -1227,7 +1258,9 @@ int main(int argc, char **argv)
 	printf("\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC\n");
 	printf("Launching miner...\n");
 	// set priority lower so the user still can do other things
-	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+#ifdef _WIN32
+  SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
+#endif
 	// init memory speedup (if not already done in preMain)
 	//mallocSpeedupInit();
 	if( pctx == NULL )
@@ -1242,7 +1275,7 @@ int main(int argc, char **argv)
 	// init critical section
 	InitializeCriticalSection(&workData.cs);
 #else
-  pthread_mutex_init(&workdata.cs);
+  pthread_mutex_init(&workData.cs, NULL);
 #endif
 	// connect to host
 	hostent* hostInfo = gethostbyname(commandlineInput.host);
@@ -1261,7 +1294,7 @@ int main(int argc, char **argv)
 	esprintf(ipText, "%d.%d.%d.%d", ((ip>>0)&0xFF), ((ip>>8)&0xFF), ((ip>>16)&0xFF), ((ip>>24)&0xFF));
 	if( ((ip>>0)&0xFF) != 255 )
 	{
-		printf("Connecting to '%s' (%d.%d.%d.%d)\n", commandlineInput.host, ((ip>>0)&0xFF), ((ip>>8)&0xFF), ((ip>>16)&0xFF), ((ip>>24)&0xFF));
+		printf("Connecting to '%s' (%lu.%lu.%lu.%lu)\n", commandlineInput.host, ((ip>>0)&0xFF), ((ip>>8)&0xFF), ((ip>>16)&0xFF), ((ip>>24)&0xFF));
 	}
 	// setup RPC connection data (todo: Read from command line)
 	jsonRequestTarget.ip = ipText;

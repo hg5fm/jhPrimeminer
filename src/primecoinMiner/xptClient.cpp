@@ -49,9 +49,9 @@ xptClient_t* xptClient_connect(jsonRequestTarget_t* target, uint32 payloadNum)
 	WSAIoctl(clientSocket, FIONBIO, &nonblocking, sizeof(nonblocking), NULL, 0, (LPDWORD)&cbRet, NULL, NULL);
 #else
   int flags, err;
-  flags = socket_fcntl(clientSocket, F_GETFL, 0); 
+  flags = fcntl(clientSocket, F_GETFL, 0); 
   flags |= O_NONBLOCK;
-  err = socket_fcntl(clientSocket, F_SETFL, flags); //ignore errors for now..
+  err = fcntl(clientSocket, F_SETFL, flags); //ignore errors for now..
 #endif
 	// initialize the client object
 	xptClient_t* xptClient = (xptClient_t*)malloc(sizeof(xptClient_t));
@@ -65,7 +65,7 @@ xptClient_t* xptClient_connect(jsonRequestTarget_t* target, uint32 payloadNum)
 #ifdef _WIN32
   InitializeCriticalSection(&xptClient->cs_shareSubmit);
 #else
-  pthread_mutex_init(&xptClient->cs_shareSubmit);
+  pthread_mutex_init(&xptClient->cs_shareSubmit, NULL);
 #endif
 	xptClient->list_shareSubmitQueue = simpleList_create(4);
 	// send worker login

@@ -134,7 +134,7 @@ int inline BN2_nz_num_unset_bits_from_lsb(const BIGNUM *a)
 	return bIdx*32+idx;
 	// _BitScanReverse
 #else
-	needs implementation
+	//needs implementation
 #endif
 }
 

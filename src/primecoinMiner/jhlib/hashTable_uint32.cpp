@@ -1,5 +1,5 @@
-#include<Windows.h>
 #include"hashTable.h"
+#include <cstdlib>
 
 #ifndef memMgr_alloc
 #define memMgr_alloc(x,y) malloc(y)

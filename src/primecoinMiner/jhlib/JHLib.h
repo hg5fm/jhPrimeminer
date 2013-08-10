@@ -4,10 +4,24 @@
 #define __JHSYSTEMLIB
 
 #ifdef _WIN32
+#define NOMINMAX
 #include<Windows.h>
+#else
+#include <signal.h>
 #endif
+#include <cstring> // for memcpy/memset
 #include<math.h>
 #include <algorithm>
+
+
+#ifndef _WIN32 // temporary replacement for _ADDRESSOF, replace with boost
+template< class T >
+T* tmp_addressof(T& arg) {
+    return reinterpret_cast<T*>(
+               &const_cast<char&>(
+                  reinterpret_cast<const volatile char&>(arg)));
+}
+#endif
 
 typedef unsigned long long 	uint64;
 typedef signed long long	sint64;
@@ -72,7 +86,9 @@ void _ex2_analyzeMemoryLog();
 #include"sData.h"
 #include"bmp.h"
 #include"tgaLib.h"
+#ifdef _WIN32
 #include"fMath.h"
+#endif
 #include"packetBuffer.h"
 #include"msgQueue.h"
 #include"simpleList.h"
