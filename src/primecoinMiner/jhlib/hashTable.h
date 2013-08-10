@@ -1,6 +1,7 @@
-#ifndef _WIN32
+#ifdef _WIN32
+typedef unsigned __int32 uint32_t;
+#else
 #include <stdint.h>
-typedef uint32_t DWORD;
 #endif
 
 typedef struct  
@@ -13,8 +14,8 @@ typedef struct
 	_HashTable_uint32Iterable_entry_t *entrys;
 	unsigned int *itemKeyArray;
 	void **itemValueArray;
-  DWORD size;
-	DWORD count;
+  uint32_t size;
+	uint32_t count;
 }hashTable_t;
 
 void hashTable_init(hashTable_t *hashTable, int itemLimit);

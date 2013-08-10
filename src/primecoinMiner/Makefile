@@ -1,7 +1,7 @@
-CXX = clang++
-CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++0x
+CXX = g++
+CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++0x -lrt -static
 LIBS = -lgmp -lssl -pthread
-LIBPATHS = -L/usr/local/lib
+LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include
 
 OBJS = \
@@ -9,16 +9,11 @@ OBJS = \
 	jhlib/fastString.o \
 	jhlib/fastString_eprintf.o \
 	jhlib/hashTable_uint32.o \
-	jhlib/msgQueue.o \
 	jhlib/packetBuffer.o \
-	jhlib/perlinNoise.o \
-	jhlib/sData.o \
 	jhlib/simpleHTTP.o \
 	jhlib/simpleList.o \
-	jhlib/streamWrapper.o \
-	jhlib/tgaLib.o \
 	obj/bn2.o \
-  obj/bn2_div.o \
+	obj/bn2_div.o \
 	obj/jsonBuilder.o \
 	obj/jsonClient.o \
 	obj/jsonObject.o \
@@ -38,7 +33,7 @@ OBJS = \
 all: jhprimeminer
   
 obj/%.o: %.cpp
-	$(CXX) -c $(CFLAGS) $(INCLUDEPATHS) $< -o $@ 
+	$(CXX) -c $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) $< -o $@ 
 
 jhprimeminer: $(OBJS:obj/%=obj/%)
 	$(CXX) $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) -o $@ $^

@@ -83,11 +83,11 @@ void _ex2_analyzeMemoryLog();
 #include"hashTable.h"
 #include"fastSorter.h"
 #include"fileMgr.h"
-#include"sData.h"
 #include"bmp.h"
 #include"tgaLib.h"
 #ifdef _WIN32
 #include"fMath.h"
+#include"sData.h"
 #endif
 #include"packetBuffer.h"
 #include"msgQueue.h"
