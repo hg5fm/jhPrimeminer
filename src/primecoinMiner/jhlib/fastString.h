@@ -57,7 +57,7 @@ int fStrLen(char *src);
 // other
 #ifdef _WIN64
 void __cdecl _esprintf(char *out, char *format, uint64 *param, unsigned int *lengthOut);
-#elseif _WIN32
+#elif _WIN32
 void __cdecl _esprintf(char *out, char *format, unsigned int *param, unsigned int *lengthOut);
 #else
 void  _esprintf(char *out, char *format, unsigned int *param, unsigned int *lengthOut);

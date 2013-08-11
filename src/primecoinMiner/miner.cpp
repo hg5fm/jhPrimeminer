@@ -1,5 +1,6 @@
 #include"global.h"
-#include <time.h>
+#include <ctime>
+#include <boost/chrono/system_clocks.hpp>
 
 
 bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* block, mpz_class& bnFixedMultiplier, bool& fNewBlock, unsigned int& nTriedMultiplier, unsigned int& nProbableChainLength, 
@@ -7,6 +8,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 
 void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 {
+  using namespace boost::chrono;
 	//printf("PrimecoinMiner started\n");
 	//SetThreadPriority(THREAD_PRIORITY_LOWEST);
 	//RenameThread("primecoin-miner");
@@ -34,9 +36,10 @@ void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 	primecoinBlock->nonce = 0x00010000 * threadIndex;
 	//primecoinBlock->nonce = 0;
 
-	uint32 nTime = GetTickCount() + 1000*600;
-
-	uint32 nStatTime = GetTickCount() + 2000;
+	/*uint32 nTime = GetTickCount() + 1000*600;
+	uint32 nStatTime = GetTickCount() + 2000;*/
+  steady_clock::time_point nTime = steady_clock::now() + seconds(600);
+  steady_clock::time_point nStatTime = steady_clock::now() + seconds(2);
 	
 	// note: originally a wanted to loop as long as (primecoinBlock->workDataHash != jhMiner_getCurrentWorkHash()) did not happen
 	//		 but I noticed it might be smarter to just check if the blockHeight has changed, since that is what is really important
@@ -50,10 +53,11 @@ void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 	time(&unixTimeStart);
 	uint32 nTimeRollStart = primecoinBlock->timestamp;
 
-	uint32 nCurrentTick = GetTickCount();
-	while( nCurrentTick < nTime && primecoinBlock->serverData.blockHeight == jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex) )
+	//uint32 nCurrentTick = GetTickCount();
+
+	while( steady_clock::now() < nTime && primecoinBlock->serverData.blockHeight == jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex) )
 	{
-		nCurrentTick = GetTickCount();
+		//nCurrentTick = GetTickCount();
 		//if( primecoinBlock->xptMode )
 		//{
 		//	// when using x.pushthrough, roll time
@@ -97,7 +101,7 @@ void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 		mpz_class mpzPrimorial;
 		unsigned int nRoundTests = 0;
 		unsigned int nRoundPrimesHit = 0;
-		int64 nPrimeTimerStart = GetTickCount();
+		//int64 nPrimeTimerStart = GetTickCount();
 		
 		//if( loopCount > 0 )
 		//{

@@ -1,4 +1,5 @@
 #include"./JHLib.h"
+#include <cstdlib>
 
 // malloc can be a real performance eater - thus introduce 'the simpleList cache' which caches up to 1000 lists and 1000 32-entry buffers
 

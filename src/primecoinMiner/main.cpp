@@ -5,6 +5,9 @@
 #include<map>
 #include <cstdlib>
 #include <cstdio>
+#include <boost/chrono/system_clocks.hpp>
+
+using namespace boost::chrono;
 
 primeStats_t primeStats = {0};
 volatile int total_shares = 0;
@@ -22,7 +25,7 @@ bool error(const char *format, ...)
 
 int getNumThreads(void) {
   // based on code from ceretullis on SO
-  int numcpu = 1; // in case we fall through;
+  uint32_t numcpu = 1; // in case we fall through;
 #if defined(__FREEBSD__) || defined(__NETBSD__) || defined(__OPENBSD__)
   int mib[4];
   size_t len = sizeof(numcpu); 
@@ -34,7 +37,7 @@ int getNumThreads(void) {
   /* get the number of CPUs from the system */
   sysctl(mib, 2, &numcpu, &len, NULL, 0);
 
-  if( numCPU < 1 ) 
+  if( numcpu < 1 )
   {
     mib[1] = HW_NCPU;
     sysctl( mib, 2, &numcpu, &len, NULL, 0 );
@@ -45,7 +48,7 @@ int getNumThreads(void) {
     }
   }
 #elif defined(__linux__) || defined(sun) || defined(__APPLE__)
-  numcpu = sysconf(_SC_NPROCESSORS_ONLN);
+  numcpu = static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
 #elif defined(_SYSTYPE_SVR4)
   numcpu = sysconf( _SC_NPROC_ONLN );
 #elif defined(hpux)
@@ -392,9 +395,11 @@ std::string HexBits(unsigned int nBits)
 void jhMiner_queryWork_primecoin()
 {
 	sint32 rpcErrorCode = 0;
-	uint32 time1 = GetTickCount();
+	//uint32 time1 = GetTickCount();
+  steady_clock::time_point time1 = steady_clock::now();
 	jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", NULL, &rpcErrorCode);
-	uint32 time2 = GetTickCount() - time1;
+	//uint32 time2 = GetTickCount() - time1;
+  steady_clock::duration time2 = steady_clock::now() - time1;
 	// printf("request time: %dms\n", time2);
 	if( jsonReturnValue == NULL )
 	{
@@ -785,11 +790,13 @@ int jhMiner_main_getworkMode()
 		// calculate stats every second tick
 		if( loopCounter&1 )
 		{
-			double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
-			if( statsPassedTime < 1.0 )
-				statsPassedTime = 1.0; // avoid division by zero
-			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
-			primeStats.primeLastUpdate = GetTickCount();
+			//double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
+      duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
+			if( statsPassedTime.count() < 0.001 )
+				statsPassedTime = duration<double>(0.001); // avoid division by zero
+			//double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime.count() / 1000.0);
+      double primesPerSecond = (double)primeStats.primeChainsFound/statsPassedTime.count();
+			primeStats.primeLastUpdate = steady_clock::now();
 			primeStats.primeChainsFound = 0;
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
 			primeStats.bestPrimeChainDifficulty = 0;
@@ -801,11 +808,15 @@ int jhMiner_main_getworkMode()
 			}
 		}		
 		// wait and check some stats
-		uint32 time_updateWork = GetTickCount();
+		//uint32 time_updateWork = GetTickCount();
+    steady_clock::time_point time_UpdateWork = steady_clock::now();
+    seconds waitTime(4);
 		while( true )
 		{
-			uint32 passedTime = GetTickCount() - time_updateWork;
-			if( passedTime >= 4000 )
+			//uint32 passedTime = GetTickCount() - time_updateWork;
+      steady_clock::duration passedTime = steady_clock::now()-time_UpdateWork;
+			//if( passedTime >= 4000 )
+      if( passedTime >= waitTime)
 				break;
 			Sleep(200);
 		}
@@ -858,7 +869,8 @@ void *AutoTuningWorkerThread(void * arg)
 #ifndef _WIN32
   bool bEnabled = *(bool *)arg;
 #endif
-	DWORD startTime = GetTickCount();
+	//DWORD startTime = GetTickCount();
+  steady_clock::time_point startTime;
 	
 	unsigned int nL1CacheElementsStart = 100000;
 	unsigned int nL1CacheElementsMax   = 3000000;
@@ -876,16 +888,16 @@ void *AutoTuningWorkerThread(void * arg)
 	while (true && bEnabled)
 	{
 		primeStats.nWaveTime = 0;
+    primeStats.nTestTime = 0;
 		primeStats.nWaveRound = 0;
-		primeStats.nTestTime = 0;
 		primeStats.nTestRound = 0;
 		Sleep(nSampleSeconds*1000);
-		DWORD waveTime = primeStats.nWaveTime;
-		
+		uint32_t waveTime = primeStats.nWaveTime;
+
 		if (bOptimalL1Search && nCounter >=1)
 		{
 			nL1CacheElements = primeStats.nL1CacheElements;
-			mL1Stat.insert( KeyVal(primeStats.nL1CacheElements, primeStats.nWaveRound == 0 ? 0xFFFF : primeStats.nWaveTime / primeStats.nWaveRound));
+			mL1Stat.insert( KeyVal((uint32_t)primeStats.nL1CacheElements, (uint32_t)(primeStats.nWaveRound == 0 ? 0xFFFF : primeStats.nWaveTime / primeStats.nWaveRound)));
 			if (nL1CacheElements < nL1CacheElementsMax)
 				primeStats.nL1CacheElements += nL1CacheElementsIncrement;
 			else
@@ -1089,7 +1101,8 @@ int jhMiner_main_xptMode()
 	// main thread, don't query work, just wait and process
 	sint32 loopCounter = 0;
 	uint32 xptWorkIdentifier = 0xFFFFFFFF;
-	uint32 time_multiAdjust = GetTickCount();
+	//uint32 time_multiAdjust = GetTickCount();
+  steady_clock::time_point time_multiAdjust = steady_clock::now();
 	unsigned long lastFiveChainCount = 0;
 	unsigned long lastFourChainCount = 0;
 	while( true )
@@ -1097,12 +1110,17 @@ int jhMiner_main_xptMode()
 		// calculate stats every second tick
 		if( loopCounter&1 )
 		{
-			double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
-			double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
-			if( statsPassedTime < 1.0 )
-				statsPassedTime = 1.0; // avoid division by zero
-			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
-			primeStats.primeLastUpdate = GetTickCount();
+			/*double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
+			double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);*/
+      duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
+      duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
+			
+      if( statsPassedTime.count() < 0.001 )
+				statsPassedTime = milliseconds(1); // avoid division by zero
+			//double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime.count() / 1000.0);
+      double primesPerSecond = (double)primeStats.primeChainsFound / statsPassedTime.count();
+			//primeStats.primeLastUpdate = GetTickCount();
+      primeStats.primeLastUpdate = steady_clock::now();
 			primeStats.primeChainsFound = 0;
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
 			primeStats.bestPrimeChainDifficulty = 0;
@@ -1111,15 +1129,15 @@ int jhMiner_main_xptMode()
 			{
 				primeStats.bestPrimeChainDifficultySinceLaunch = std::max<double>((double)primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
 				//double sharesPerHour = ((double)valid_shares / totalRunTime) * 3600000.0;
-				float shareValuePerHour = primeStats.fShareValue / totalRunTime * 3600000.0;
-				float fiveSharePerPeriod = ((double)(primeStats.chainCounter[5] - lastFiveChainCount) / statsPassedTime) * 3600000.0;
-				float fourSharePerPeriod = ((double)(primeStats.chainCounter[4] - lastFourChainCount) / statsPassedTime) * 3600000.0;
+				float shareValuePerHour = primeStats.fShareValue / totalRunTime.count() * 3600.0;
+				float fiveSharePerPeriod = ((double)(primeStats.chainCounter[5] - lastFiveChainCount) / statsPassedTime.count()) * 3600.0;
+				float fourSharePerPeriod = ((double)(primeStats.chainCounter[4] - lastFourChainCount) / statsPassedTime.count()) * 3600.0;
 				lastFiveChainCount = primeStats.chainCounter[5];
 				lastFourChainCount = primeStats.chainCounter[4];
 				printf("Val/h %.03f - PPS: %d", shareValuePerHour, (sint32)primesPerSecond);
 				for(int i=4; i<7; i++)
 				{
-					printf(" - %dch/h: %.02f", i, ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0); 
+					printf(" - %dch/h: %.02f", i, ((double)primeStats.chainCounter[i] / totalRunTime.count()) * 3600000.0);
 				}
 				printf(" - Last 4ch/h: %.02f - Last 5ch/h: %.02f\n", fourSharePerPeriod, fiveSharePerPeriod);
 				//printf(" - Best: %.04f - Max: %.04f\n", primeDifficulty, primeStats.bestPrimeChainDifficultySinceLaunch);
@@ -1127,26 +1145,39 @@ int jhMiner_main_xptMode()
 			}
 		}
 		// wait and check some stats
-		uint32 time_updateWork = GetTickCount();
+		//uint32 time_updateWork = GetTickCount();
+    steady_clock::time_point time_updateWork = steady_clock::now();
 		while( true )
 		{
-			uint32 tickCount = GetTickCount();
+			/*uint32 tickCount = GetTickCount();
 			uint32 passedTime = tickCount - time_updateWork;
-
 
 			if (tickCount - time_multiAdjust >= 60000)
 			{
 				MultiplierAutoAdjust();
 				time_multiAdjust = GetTickCount();
-			}
+			}*/
+      
+      steady_clock::time_point tickCount = steady_clock::now();
+      steady_clock::duration passedTime = tickCount - time_updateWork;
+      seconds waitTime(60);
+      
+      if(tickCount - time_multiAdjust >= waitTime)
+      {
+        MultiplierAutoAdjust();
+        time_multiAdjust = steady_clock::now();
+      }
+      
 
 			//if(tickCount - time_AvarageCalc >= 5*60*1000)
 			//{
 			//	//calculate 5 minute avarages
 			//}
 
-			if( passedTime >= 4000 )
-				break;
+			/*if( passedTime >= 4000 )
+				break;*/
+      if( passedTime.count() >= 4000000000)
+        break;
 			xptClient_process(workData.xptClient);
 			char* disconnectReason = false;
 			if( workData.xptClient == NULL || xptClient_isDisconnected(workData.xptClient, &disconnectReason) )
@@ -1195,8 +1226,10 @@ int jhMiner_main_xptMode()
 				}
 				if (workData.xptClient->blockWorkInfo.height > 0)
 				{
-					double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
-					double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
+					//double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
+					//double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
+          duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
+          duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
 					double poolDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBitsShare);
 					double blockDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBits);
 					printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
@@ -1204,7 +1237,7 @@ int jhMiner_main_xptMode()
 					printf("---- Total/Valid shares: [ %d / %d ]  -  Max diff: %.05f\n",valid_shares, total_shares, primeStats.bestPrimeChainDifficultySinceLaunch);
 					for (int i = 6; i <= 10; i++)
 					{
-						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0;
+						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime.count()) * 3600.0;
 						printf("---- %d-chain count: %lu  -  %dch/h: %.03f - Share Value: %00.03f\n", 
 							i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
 					}
@@ -1278,6 +1311,7 @@ int main(int argc, char **argv)
   pthread_mutex_init(&workData.cs, NULL);
 #endif
 	// connect to host
+#ifdef _WIN32
 	hostent* hostInfo = gethostbyname(commandlineInput.host);
 	if( hostInfo == NULL )
 	{
@@ -1296,6 +1330,15 @@ int main(int argc, char **argv)
 	{
 		printf("Connecting to '%s' (%lu.%lu.%lu.%lu)\n", commandlineInput.host, ((ip>>0)&0xFF), ((ip>>8)&0xFF), ((ip>>16)&0xFF), ((ip>>24)&0xFF));
 	}
+#else
+  struct addrinfo hints, *res;
+  memset(&hints, 0, sizeof(hints));
+  hints.ai_family = AF_INET;
+  getaddrinfo(commandlineInput.host, 0, &hints, &res);
+  char ipText[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &((struct sockaddr_in *)res->ai_addr)->sin_addr, ipText, INET_ADDRSTRLEN);
+#endif
+  
 	// setup RPC connection data (todo: Read from command line)
 	jsonRequestTarget.ip = ipText;
 	jsonRequestTarget.port = commandlineInput.port;
@@ -1310,8 +1353,10 @@ int main(int argc, char **argv)
 	//lastBlockCount = queryLocalPrimecoindBlockCount(useLocalPrimecoindForLongpoll);
 
 	// init stats
-	primeStats.primeLastUpdate = GetTickCount();
-	primeStats.startTime = GetTickCount();
+	//primeStats.primeLastUpdate = GetTickCount();
+	//primeStats.startTime = GetTickCount();
+  primeStats.primeLastUpdate = steady_clock::now();
+  primeStats.startTime = steady_clock::now();
 	primeStats.shareFound = false;
 	primeStats.shareRejected = false;
 	primeStats.primeChainsFound = 0;

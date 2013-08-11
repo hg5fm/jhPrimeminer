@@ -1,4 +1,7 @@
 #include"global.h"
+#include <boost/chrono/system_clocks.hpp>
+#include <iostream>
+
 #ifndef _WIN32
 // lazy workaround
 typedef int SOCKET;
@@ -143,7 +146,10 @@ void xptServer_deleteClient(xptServer_t* xptServer, xptServerClient_t* xptServer
  */
 void xptServer_sendNewBlockToAll(xptServer_t* xptServer, uint32 coinTypeIndex)
 {
-	uint32 time1 = GetTickCount();
+  using namespace boost::chrono;
+  using namespace std;
+	//uint32 time1 = GetTickCount();
+  steady_clock::time_point start = steady_clock::now();
 	sint32 workerCount = 0;
 	sint32 payloadCount = 0;
 	for(uint32 i=0; i<xptServer->list_connections->objectCount; i++)
@@ -158,8 +164,12 @@ void xptServer_sendNewBlockToAll(xptServer_t* xptServer, uint32 coinTypeIndex)
 		workerCount++;
 		payloadCount += xptServerClient->payloadNum;
 	}
-	uint32 time2 = GetTickCount() - time1;
-	printf("Send %d blocks to %d workers in %dms\n", payloadCount, workerCount, time2);
+	//uint32 time2 = GetTickCount() - time1;
+	//printf("Send %d blocks to %d workers in %dms\n", payloadCount, workerCount,time2);
+  milliseconds end = duration_cast<milliseconds>(steady_clock::now() - start);
+  cout << "Send " << payloadCount << " blocks to ";
+  cout << workerCount << " workers ";
+  cout << "in " << end.count() << " ms" << endl;
 }
 
 /*

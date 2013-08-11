@@ -2,6 +2,7 @@
 #ifndef _WIN32
 #include <pthread.h>
 #endif
+#include <cstdlib>
 
 typedef struct  
 {

@@ -6,6 +6,7 @@
 #include <bitset>
 #include <time.h>
 #include <set>
+#include <boost/chrono/system_clocks.hpp>
 
 
 // Prime Table
@@ -778,7 +779,9 @@ bool ProbablePrimeChainTest(const mpz_class& bnPrimeChainOrigin, unsigned int nB
 //   false - prime chain too short (none of nChainLength meeting target)
 static bool ProbablePrimeChainTestFast(const mpz_class& mpzPrimeChainOrigin, CPrimalityTestParams& testParams)
 {
-	DWORD start = GetTickCount();
+  using namespace boost::chrono;
+	//DWORD start = GetTickCount();
+  steady_clock::time_point start = steady_clock::now();
     const unsigned int nBits = testParams.nBits;
     const unsigned int nCandidateType = testParams.nCandidateType;
     unsigned int& nChainLength = testParams.nChainLength;
@@ -817,8 +820,8 @@ static bool ProbablePrimeChainTestFast(const mpz_class& mpzPrimeChainOrigin, CPr
         }
     }
 
-	uint32 end = GetTickCount(); 
-	primeStats.nTestTime += end-start;
+	//uint32 end = GetTickCount();
+	primeStats.nTestTime += duration_cast<milliseconds>(steady_clock::now()-start).count();
 	primeStats.nTestRound ++;
 
     return (nChainLength >= nBits);
@@ -1487,8 +1490,10 @@ void CSieveOfEratosthenes::AddMultiplier(unsigned int *vMultipliers, const unsig
 //   False - sieve already completed
 bool CSieveOfEratosthenes::Weave()
 {
+  using namespace boost::chrono;
     // Faster GMP version
-	uint32 start = GetTickCount(); 
+	//uint32 start = GetTickCount();
+  steady_clock::time_point start = steady_clock::now();
     // Keep all variables local for max performance
     const unsigned int nChainLength = this->nChainLength;
     const unsigned int nDoubleChainLength = this->nChainLength * 2;
@@ -1663,8 +1668,11 @@ bool CSieveOfEratosthenes::Weave()
     free(vCunningham2AMultipliers);
     free(vCunningham2BMultipliers);
 
-	uint32 end = GetTickCount(); 
-	primeStats.nWaveTime += end-start;
+	//uint32 end = GetTickCount();
+	//primeStats.nWaveTime += end-start;
+  //FIXME: figure out a better way to store the durations in primeStats to avoid
+  //these stupid expressions
+  primeStats.nWaveTime += static_cast<uint32_t>(duration_cast<milliseconds>(steady_clock::now()-start).count());
 	primeStats.nWaveRound ++;
     return false;
 }

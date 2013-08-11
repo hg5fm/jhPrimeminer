@@ -1,6 +1,8 @@
+#include <algorithm>
+#include <boost/chrono/system_clocks.hpp>
+
 #ifdef _WIN32
 #define NOMINMAX
-#include <algorithm>
 #pragma comment(lib,"Ws2_32.lib")
 #include<Winsock2.h>
 #include<ws2tcpip.h>
@@ -15,14 +17,8 @@
 #include <unistd.h>
 #include <stdint.h>
 #include <signal.h>
-#define Sleep sleep
+#define Sleep(ms) usleep(1000*ms)
 #include <pthread.h>
-
-uint32_t GetTickCount(void) { 
-  struct timespec now;
-  clock_gettime(CLOCK_MONOTONIC, &now);
-  return now.tv_nsec/1000000;
-}
 
 typedef uint8_t BYTE;
 typedef uint32_t DWORD;
@@ -38,7 +34,6 @@ typedef uint32_t DWORD;
 static const int PROTOCOL_VERSION = 70001;
 
 #include<openssl/bn.h>
-
 
 // our own improved versions of BN functions
 BIGNUM *BN2_mod_inverse(BIGNUM *in,	const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx);
@@ -170,19 +165,20 @@ typedef struct
 
 typedef struct  
 {
-	volatile uint32 primeChainsFound;
-	volatile uint32 foundShareCount;
+	volatile uint32_t primeChainsFound;
+	volatile uint32_t foundShareCount;
 	volatile float fShareValue;
 	volatile float fBlockShareValue;
-	volatile uint32 chainCounter[12];
-	volatile uint32 nWaveTime;
+	volatile uint32_t chainCounter[12];
+	volatile uint32_t nWaveTime;
 	volatile unsigned int nWaveRound;
-	volatile uint32 nTestTime;
+	volatile uint32_t nTestTime;
 	volatile unsigned int nTestRound;
 
 	volatile float nChainHit;
 	volatile float nPrevChainHit;
 	volatile unsigned int nPrimorialMultiplier;
+
 #ifdef _WIN32
   CRITICAL_SECTION cs;
 #else
@@ -194,8 +190,10 @@ typedef struct
 	//volatile uint32 qualityPrimesFound;
 	volatile uint32 bestPrimeChainDifficulty;
 	volatile double bestPrimeChainDifficultySinceLaunch;
-	uint32 primeLastUpdate;
-	uint32 startTime;
+	//uint32 primeLastUpdate;
+	//uint32 startTime;
+  boost::chrono::steady_clock::time_point primeLastUpdate;
+  boost::chrono::steady_clock::time_point startTime;
 	bool shareFound;
 	bool shareRejected;
 	volatile unsigned int nL1CacheElements;

@@ -1,5 +1,8 @@
 #include"global.h"
 
+#include <boost/chrono/system_clocks.hpp>
+#include <iostream>
+
 #ifdef _WIN32
 SOCKET jsonClient_openConnection(char *IP, int Port)
 {
@@ -126,6 +129,8 @@ unsigned char * base64_decode(const unsigned char *src, size_t len, uint8* out, 
 
 jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, fStr_t* fStr_parameterData, sint32* errorCode)
 {
+  using namespace boost::chrono;
+  using namespace std;
 	*errorCode = JSON_ERROR_NONE;
 	// create connection to host
 #ifdef _WIN32
@@ -139,7 +144,8 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 		return NULL;
 	}
 
-	uint32 startTime = GetTickCount(); // todo: Replace with crossplatform method
+	//uint32 startTime = GetTickCount(); // todo: Replace with crossplatform method
+  steady_clock::time_point startTime = steady_clock::now();
 	// build json request data
 	// example: {"method": "getwork", "params": [], "id":0}
 	fStr_t* fStr_jsonRequestData = fStr_alloc(1024*512); // 64KB (this is also used as the recv buffer!)
@@ -209,8 +215,11 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 		n = select(serverSocket, &fds, NULL, NULL, &tv ) ;
 		if( n == 0)
 		{
-			uint32 passedTime = GetTickCount() - startTime;
-			printf("JSON request timed out after %dms\n", passedTime);
+			//uint32 passedTime = GetTickCount() - startTime;
+      steady_clock::duration passedTime = steady_clock::now() - startTime;
+			//printf("JSON request timed out after %dms\n", passedTime);
+      cout << "JSON request timed out after ";
+      cout << duration_cast<milliseconds>(passedTime).count() << " ms" << endl;
 			break;
 		}
 		else if( n == -1 )

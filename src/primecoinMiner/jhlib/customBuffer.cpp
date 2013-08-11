@@ -1,4 +1,5 @@
 #include"./JHLib.h"
+#include <cstdlib>
 
 customBuffer_t* customBuffer_create(sint32 initialLimit, uint32 objectSize)
 {

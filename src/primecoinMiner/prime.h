@@ -9,6 +9,8 @@
 #define USE_ROTATE
 #endif
 
+#include <cstdlib>
+
 //#include "main.h"
 #ifdef _WIN32
 #include "mpirxx.h"
