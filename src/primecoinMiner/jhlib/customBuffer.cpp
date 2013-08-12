@@ -112,3 +112,4 @@ customBuffer_t* customBuffer_duplicate(customBuffer_t* customBufferSource)
 
 	return customBuffer;
 }
+

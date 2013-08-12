@@ -692,3 +692,4 @@ uint32 getLeastBitIndex(uint32 mask)
 		cIndex -= 1;
 	return cIndex;
 }
+

@@ -30,3 +30,4 @@ unsigned int hashTable_getCount(hashTable_t *hashTable);
 
 bool hashTable_set(hashTable_t *hashTable, char *key, void *item);
 void *hashTable_get(hashTable_t *hashTable, char *key);
+
