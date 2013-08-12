@@ -174,7 +174,6 @@ void primecoinBlock_generateBlockHash(primecoinBlock_t* primecoinBlock, uint8 ha
 	//CBigNum bnPrimeChainMultiplier;
 	//bnPrimeChainMultiplier.SetHex(primecoinBlock->mpzPrimeChainMultiplier.get_str(16));
 	//std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
-  //*(uint8*)(blockHashDataInput + writeIndex) = (uint8)lengthMpz;
 	//lengthBN = bnSerializeData.size();
 	//*(uint8*)(blockHashDataInput+writeIndex) = (uint8)lengthBN;
   std::string multiplier = primecoinBlock->mpzPrimeChainMultiplier.get_str(16);
