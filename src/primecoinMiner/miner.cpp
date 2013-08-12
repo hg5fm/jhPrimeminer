@@ -23,10 +23,10 @@ void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 	const unsigned int nPrimorialMultiplierMax = 79;
 
 	unsigned int nPrimorialMultiplier = primeStats.nPrimorialMultiplier;
-	int64 nTimeExpected = 0;   // time expected to prime chain (micro-second)
-	int64 nTimeExpectedPrev = 0; // time expected to prime chain last time
+	uint64_t nTimeExpected = 0;   // time expected to prime chain (micro-second)
+	uint64_t nTimeExpectedPrev = 0; // time expected to prime chain last time
 	bool fIncrementPrimorial = true; // increase or decrease primorial factor
-	int64 nSieveGenTime = 0;
+	uint64_t nSieveGenTime = 0;
 	
 
 	CSieveOfEratosthenes* psieve = NULL;

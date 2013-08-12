@@ -57,7 +57,7 @@ void customBuffer_insert(customBuffer_t* customBuffer, sint32 insertIndex, void*
 		// todo: Insert can be optimized when realloc is used
 	}
 	// shift post-insert part
-	uint32 insertByteIndex = insertIndex * customBuffer->objectSize;
+	//uint32 insertByteIndex = insertIndex * customBuffer->objectSize; unused
 	for(sint32 i=(sint32)customBuffer->objectCount; i>=(sint32)insertIndex; i--)
 	{
 		memcpy(((uint8*)customBuffer->objects)+(i+1)*customBuffer->objectSize, ((uint8*)customBuffer->objects)+(i)*customBuffer->objectSize, customBuffer->objectSize);

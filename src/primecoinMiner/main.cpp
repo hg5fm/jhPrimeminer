@@ -984,7 +984,7 @@ void *input_thread(void *)
 
 	while (1) {
 		int input;
-		input = getchar();		
+		input = getchar();
 		switch (input) {
 		case 'q': case 'Q': case 3: //case 27:
 			std::exit(0);

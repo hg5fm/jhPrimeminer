@@ -603,7 +603,7 @@ bool TargetGetMint(unsigned int nBits, uint64& nMint)
 }
 
 // Get next target value
-bool TargetGetNext(unsigned int nBits, int64 nInterval, int64 nTargetSpacing, int64 nActualSpacing, unsigned int& nBitsNext)
+bool TargetGetNext(unsigned int nBits, uint64_t nInterval, uint64_t nTargetSpacing, uint64 nActualSpacing, unsigned int& nBitsNext)
 {
 	nBitsNext = nBits;
 	// Convert length into fractional difficulty
@@ -1047,8 +1047,8 @@ double GetPrimeDifficulty(unsigned int nBits)
 // Estimate work transition target to longer prime chain
 unsigned int EstimateWorkTransition(unsigned int nPrevWorkTransition, unsigned int nBits, unsigned int nChainLength)
 {
-	int64 nInterval = 500;
-	int64 nWorkTransition = nPrevWorkTransition;
+	uint64_t nInterval = 500;
+	uint64_t nWorkTransition = nPrevWorkTransition;
 	unsigned int nBitsCeiling = 0;
 	TargetSetLength(TargetGetLength(nBits)+1, nBitsCeiling);
 	unsigned int nBitsFloor = 0;

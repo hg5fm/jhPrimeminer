@@ -69,8 +69,8 @@ int BN2_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 #include"xptServer.h"
 #include"xptClient.h"
 
-static const int64 COIN = 100000000;
-static const int64 CENT = 1000000;
+static const uint64_t COIN = 100000000;
+static const uint64_t CENT = 1000000;
 
 
 #define	bswap_16(value)  \
