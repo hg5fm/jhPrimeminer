@@ -62,38 +62,6 @@ int getNumThreads(void) {
   return numcpu;
 }
 
-/*
-bool hex2bin(unsigned char *p, const char *hexstr, size_t len)
-{
-	while (*hexstr && len) {
-		char hex_byte[3];
-		unsigned int v;
-
-		if (!hexstr[1]) {
-			printf("hex2bin str truncated");
-			return false;
-		}
-
-		hex_byte[0] = hexstr[0];
-		hex_byte[1] = hexstr[1];
-		hex_byte[2] = 0;
-
-		if (sscanf(hex_byte, "%x", &v) != 1) {
-			printf("hex2bin sscanf '%s' failed", hex_byte);
-			return false;
-		}
-
-		*p = (unsigned char) v;
-
-		p++;
-		hexstr += 2;
-		len--;
-	}
-
-	return (len == 0 && *hexstr == 0) ? true : false;
-}
-*/
-
 bool hex2bin(unsigned char *p, const char *hexstr, size_t len)
 {
 	bool ret = false;
@@ -392,6 +360,7 @@ std::string HexBits(unsigned int nBits)
     uBits.nBits = htonl((int32_t)nBits);
     return HexStr(BEGIN(uBits.cBits), END(uBits.cBits));
 }
+
 void jhMiner_queryWork_primecoin()
 {
 	sint32 rpcErrorCode = 0;
