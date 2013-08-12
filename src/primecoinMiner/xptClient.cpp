@@ -1,5 +1,7 @@
 #include"global.h"
+#ifndef _WIN32
 #include <errno.h>
+#endif
 
 #ifdef _WIN32
 SOCKET xptClient_openConnection(char *IP, int Port)

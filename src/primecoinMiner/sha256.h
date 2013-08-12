@@ -1,7 +1,9 @@
 #ifndef _SHA256_H
 #define _SHA256_H
 
+#ifndef _WIN32
 #include <stdint.h>
+#endif
 /*#ifndef uint8
 #define uint8  unsigned char
 #endif
