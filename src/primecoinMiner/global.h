@@ -15,7 +15,7 @@
 #include <netdb.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
-#include <stdint.h>
+//#include <stdint.h>
 #include <signal.h>
 #define Sleep(ms) usleep(1000*ms)
 #include <pthread.h>

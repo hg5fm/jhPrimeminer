@@ -103,16 +103,14 @@ void _ex2_analyzeMemoryLog();
 #include"streamWrapper.h"
 #include"fastString.h"
 #include"hashTable.h"
-#include"fastSorter.h"
+/*#include"fastSorter.h"
 #include"fileMgr.h"
 #include"bmp.h"
 #include"tgaLib.h"
-#ifdef _WIN32
 #include"fMath.h"
 #include"sData.h"
-#endif
+#include"msgQueue.h"*/
 #include"packetBuffer.h"
-#include"msgQueue.h"
 #include"simpleList.h"
 #include"customBuffer.h"
 
