@@ -321,7 +321,6 @@
 					"-lgmpxx",
 					"-lboost_system-mt",
 					"-lboost_chrono-mt",
-					"-lncurses",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -344,7 +343,6 @@
 					"-lssl",
 					"-lboost_chrono-mt",
 					"-lboost_system-mt",
-					"-lncurses",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
