@@ -89,4 +89,3 @@ inline float _fastAbs(float v);
 
 // bitstuff
 uint32 getLeastBitIndex(uint32 mask);
-

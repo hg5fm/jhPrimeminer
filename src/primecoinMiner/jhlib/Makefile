@@ -13,4 +13,3 @@ libjh.a: $(OBJ)
 clean:
 	-rm -f *.o
 	-rm -f libjh.a
-

@@ -117,4 +117,3 @@ fStr_t* fStr_alloc(fStr_buffer1kb_t* fStrBuffer, uint32 format=FSTR_FORMAT_UTF8)
 fStr_t* fStr_alloc(fStr_buffer4kb_t* fStrBuffer, uint32 format=FSTR_FORMAT_UTF8);
 
 
-

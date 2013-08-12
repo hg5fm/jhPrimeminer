@@ -328,4 +328,3 @@ void objectCreatorCache_freeAll(objectCreatorCache_t* objectCreatorCache)
 	simpleList_free(objectCreatorCache->dataBlocks);
 	free(objectCreatorCache);
 }
-

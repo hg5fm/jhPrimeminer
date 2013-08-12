@@ -673,4 +673,3 @@ void esprintf(char *out, char *format, ...)
 #endif
 
 }
-

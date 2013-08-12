@@ -489,4 +489,3 @@ sint32 fStrCmpCaseInsensitive(uint8* str1, uint8* str2, uint32 length)
 	}
 	return 0;
 }
-
