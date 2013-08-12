@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -c -mtune=native -O2 -Wall -Wextra
+CXXFLAGS = -c -mtune=native -O2 -Wall -Wextra -std=c++11
 INCLUDEFLAGS = -I.
 OBJ = customBuffer.o fastString.o fastString_eprintf.o hashTable_uint32.o packetBuffer.o simpleList.o
 all: libjh.a

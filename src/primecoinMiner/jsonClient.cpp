@@ -1,6 +1,6 @@
 #include"global.h"
 
-#include <boost/chrono/system_clocks.hpp>
+#include <chrono>
 #include <iostream>
 
 #ifdef _WIN32
@@ -129,7 +129,7 @@ unsigned char * base64_decode(const unsigned char *src, size_t len, uint8* out, 
 
 jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, fStr_t* fStr_parameterData, sint32* errorCode)
 {
-  using namespace boost::chrono;
+  using namespace std::chrono;
   using namespace std;
 	*errorCode = JSON_ERROR_NONE;
 	// create connection to host

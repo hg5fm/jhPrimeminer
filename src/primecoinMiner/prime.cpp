@@ -6,7 +6,7 @@
 #include <bitset>
 #include <time.h>
 #include <set>
-#include <boost/chrono/system_clocks.hpp>
+#include <chrono>
 
 
 // Prime Table
@@ -779,7 +779,7 @@ bool ProbablePrimeChainTest(const mpz_class& bnPrimeChainOrigin, unsigned int nB
 //   false - prime chain too short (none of nChainLength meeting target)
 static bool ProbablePrimeChainTestFast(const mpz_class& mpzPrimeChainOrigin, CPrimalityTestParams& testParams)
 {
-  using namespace boost::chrono;
+  using namespace std::chrono;
 	//DWORD start = GetTickCount();
   steady_clock::time_point start = steady_clock::now();
     const unsigned int nBits = testParams.nBits;
@@ -1499,7 +1499,7 @@ void CSieveOfEratosthenes::AddMultiplier(unsigned int *vMultipliers, const unsig
 //   False - sieve already completed
 bool CSieveOfEratosthenes::Weave()
 {
-  using namespace boost::chrono;
+  using namespace std::chrono;
     // Faster GMP version
 	//uint32 start = GetTickCount();
   steady_clock::time_point start = steady_clock::now();
