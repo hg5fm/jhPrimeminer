@@ -74,7 +74,7 @@ uint32 xptPacketbuffer_readU32(xptPacketbuffer_t* pb, bool* error)
 		*error = true;
 		return 0;
 	}
-	uint32 v = *(uint32*)(pb->buffer+pb->parserIndex);
+	uint32_t v = *(uint32_t*)(pb->buffer+pb->parserIndex);
 	pb->parserIndex += 4;
 	*error = false;
 	return v;

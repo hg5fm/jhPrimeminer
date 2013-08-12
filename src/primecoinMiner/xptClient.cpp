@@ -1,4 +1,5 @@
 #include"global.h"
+#include <errno.h>
 
 #ifdef _WIN32
 SOCKET xptClient_openConnection(char *IP, int Port)
@@ -10,6 +11,10 @@ SOCKET xptClient_openConnection(char *IP, int Port)
 	addr.sin_port=htons(Port);
 	addr.sin_addr.s_addr=inet_addr(IP);
 	int result = connect(s,(SOCKADDR*)&addr,sizeof(SOCKADDR_IN));
+  if( result )
+	{
+		return 0;
+	}
 #else
 int xptClient_openConnection(char *IP, int Port)
 {
@@ -21,10 +26,8 @@ int xptClient_openConnection(char *IP, int Port)
 	addr.sin_addr.s_addr = inet_addr(IP);
 	int result = connect(s, (sockaddr*)&addr, sizeof(sockaddr_in));
 #endif
-	if( result )
-	{
-		return 0;
-	}
+  if( result < 0)
+    return 0;
 	return s;
 }
 
@@ -208,9 +211,11 @@ bool xptClient_process(xptClient_t* xptClient)
 			return false;
 		}
 #else
-    // TODO not sure what the *nix equivalent is to WSAGetLastError()
-    xptClient->disconnected = true;
-    return false;
+    if(errno != EAGAIN)
+    {
+      xptClient->disconnected = true;
+      return false;
+    }
 #endif
 		return true;
 	}

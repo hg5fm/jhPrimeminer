@@ -399,7 +399,7 @@ void jhMiner_queryWork_primecoin()
   steady_clock::time_point time1 = steady_clock::now();
 	jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", NULL, &rpcErrorCode);
 	//uint32 time2 = GetTickCount() - time1;
-  steady_clock::duration time2 = steady_clock::now() - time1;
+  //steady_clock::duration time2 = steady_clock::now() - time1; unused
 	// printf("request time: %dms\n", time2);
 	if( jsonReturnValue == NULL )
 	{
@@ -476,7 +476,7 @@ int jhMiner_workerThread_getwork(int threadIndex)
 #else
 void* jhMiner_workerThread_getwork(void *arg)
 {
-  int threadIndex = *(sint32 *)arg;
+  uint32_t threadIndex = static_cast<uint32_t>((uintptr_t)arg);
 #endif
 	while( true )
 	{
@@ -528,7 +528,7 @@ int jhMiner_workerThread_xpt(int threadIndex)
 #else
 void *jhMiner_workerThread_xpt(void *arg)
 {
-  int threadIndex = *(int *)arg;
+  uint32_t threadIndex = static_cast<uint32_t>((uintptr_t)arg);
 #endif
 	while( true )
 	{
@@ -776,8 +776,8 @@ int jhMiner_main_getworkMode()
   for(sint32 threadIdx=0; threadIdx<commandlineInput.numThreads; threadIdx++) {
     pthread_create(&threads[threadIdx], 
                    &threadAttr, 
-                   jhMiner_workerThread_getwork, 
-                   (void *)&threadIdx);
+                   jhMiner_workerThread_getwork,
+                   (void *)threadIdx);
   }
   pthread_attr_destroy(&threadAttr);
 #endif
@@ -867,7 +867,7 @@ void *AutoTuningWorkerThread(void * arg)
 #endif
 {
 #ifndef _WIN32
-  bool bEnabled = *(bool *)arg;
+  bool bEnabled = static_cast<bool>((uintptr_t)arg);
 #endif
 	//DWORD startTime = GetTickCount();
   steady_clock::time_point startTime;
@@ -1075,11 +1075,12 @@ int jhMiner_main_xptMode()
 		SetThreadPriority(hThread, THREAD_PRIORITY_BELOW_NORMAL);
 	}
 #else
-    // start the Auto Tuning thread
-  pthread_t threads[commandlineInput.numThreads + 2];
+  uint32_t totalThreads = commandlineInput.numThreads + 2;
+  pthread_t threads[totalThreads];
   const bool enabled = true;
-  pthread_create(&threads[0], NULL, AutoTuningWorkerThread, (void *)&enabled);
-  pthread_create(&threads[1], NULL, input_thread, NULL);
+  // start the Auto Tuning thread
+  pthread_create(&threads[commandlineInput.numThreads], NULL, AutoTuningWorkerThread, (void *)&enabled);
+  pthread_create(&threads[commandlineInput.numThreads+1], NULL, input_thread, NULL);
   pthread_attr_t threadAttr;
   pthread_attr_init(&threadAttr);
   // Set the stack size of the thread
@@ -1089,12 +1090,12 @@ int jhMiner_main_xptMode()
   pthread_attr_setdetachstate(&threadAttr, PTHREAD_CREATE_DETACHED);
 	
   // start threads
-	for(int32_t threadIdx=2; threadIdx<commandlineInput.numThreads; threadIdx++)
+	for(uint32_t threadIdx=0; threadIdx<commandlineInput.numThreads; threadIdx++)
 	{
 		pthread_create(&threads[threadIdx], 
                    &threadAttr, 
                    jhMiner_workerThread_xpt, 
-                   (void *)&threadIdx);
+                   (void *)threadIdx);
 	}
   pthread_attr_destroy(&threadAttr);
 #endif
@@ -1137,7 +1138,7 @@ int jhMiner_main_xptMode()
 				printf("Val/h %.03f - PPS: %d", shareValuePerHour, (sint32)primesPerSecond);
 				for(int i=4; i<7; i++)
 				{
-					printf(" - %dch/h: %.02f", i, ((double)primeStats.chainCounter[i] / totalRunTime.count()) * 3600000.0);
+					printf(" - %dch/h: %.02f", i, ((double)primeStats.chainCounter[i] / totalRunTime.count()) * 3600.0);
 				}
 				printf(" - Last 4ch/h: %.02f - Last 5ch/h: %.02f\n", fourSharePerPeriod, fiveSharePerPeriod);
 				//printf(" - Best: %.04f - Max: %.04f\n", primeDifficulty, primeStats.bestPrimeChainDifficultySinceLaunch);
@@ -1229,7 +1230,7 @@ int jhMiner_main_xptMode()
 					//double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
 					//double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
           duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
-          duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
+          //duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
 					double poolDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBitsShare);
 					double blockDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBits);
 					printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
