@@ -28,7 +28,7 @@ OBJS = \
 all: jhprimeminer
   
 obj/%.o: %.cpp
-	$(CXX) -c $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) $< -o $@ 
+	$(CXX) -c $(CFLAGS) $(INCLUDEPATHS) $< -o $@ 
 
 jhprimeminer: $(OBJS:obj/%=obj/%)
 	$(CXX) $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) -o $@ $^
@@ -36,4 +36,3 @@ jhprimeminer: $(OBJS:obj/%=obj/%)
 clean:
 	-rm -f jhprimeminer
 	-rm -f obj/*.o
-	-rm -f jhlib/*.o
