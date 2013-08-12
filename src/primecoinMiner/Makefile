@@ -9,8 +9,6 @@ LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include
 
 OBJS = \
-	obj/bn2.o \
-	obj/bn2_div.o \
 	obj/jsonBuilder.o \
 	obj/jsonClient.o \
 	obj/jsonObject.o \
