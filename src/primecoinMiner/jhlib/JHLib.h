@@ -8,7 +8,6 @@
 #include<Windows.h>
 #else
 #include <signal.h>
-#include <stdint.h>
 #endif
 #include <cstring> // for memcpy/memset
 #include<math.h>
