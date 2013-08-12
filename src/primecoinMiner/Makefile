@@ -1,5 +1,5 @@
 CXX = g++
-CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++11 -stdlib=libc++
+CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++11
 
 # on linux you need to change -lpthread to -pthread and you need to add -lrt
 # version of libraries, else remove -mt

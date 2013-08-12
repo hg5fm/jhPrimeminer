@@ -1,6 +1,6 @@
 #include"global.h"
 #include <ctime>
-#include <boost/chrono/system_clocks.hpp>
+#include <chrono>
 
 
 bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* block, mpz_class& bnFixedMultiplier, bool& fNewBlock, unsigned int& nTriedMultiplier, unsigned int& nProbableChainLength, 
@@ -8,7 +8,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 
 void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 {
-  using namespace boost::chrono;
+  using namespace std::chrono;
 	//printf("PrimecoinMiner started\n");
 	//SetThreadPriority(THREAD_PRIORITY_LOWEST);
 	//RenameThread("primecoin-miner");
