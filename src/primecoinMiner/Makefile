@@ -1,10 +1,9 @@
 CXX = g++
-CFLAGS = -mtune=native -O2 -Wall -Wextra
+CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++11 -stdlib=libc++
 
 # on linux you need to change -lpthread to -pthread and you need to add -lrt
-# if the linker complains about not finding boost make sure you have the -mt
 # version of libraries, else remove -mt
-LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread -lboost_chrono-mt -lboost_system-mt -L./jhlib/ -ljh
+LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread -L./jhlib/ -ljh
 LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include
 
