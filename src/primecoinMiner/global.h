@@ -36,12 +36,12 @@ static const int PROTOCOL_VERSION = 70001;
 #include<openssl/bn.h>
 
 // our own improved versions of BN functions
-BIGNUM *BN2_mod_inverse(BIGNUM *in,	const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx);
+/*BIGNUM *BN2_mod_inverse(BIGNUM *in,	const BIGNUM *a, const BIGNUM *n, BN_CTX *ctx);
 int BN2_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor);
 int BN2_num_bits(const BIGNUM *a);
 int BN2_rshift(BIGNUM *r, const BIGNUM *a, int n);
 int BN2_lshift(BIGNUM *r, const BIGNUM *a, int n);
-int BN2_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+int BN2_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);*/
 
 #define fastInitBignum(bignumVar, bignumData) \
 	bignumVar.d = (BN_ULONG*)bignumData; \
@@ -52,7 +52,7 @@ int BN2_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 // original primecoin BN stuff
 #include"uint256.h"
-#include"bignum2.h"
+//#include"bignum2.h"
 //#include"bignum_custom.h"
 
 #include"prime.h"
@@ -212,7 +212,7 @@ typedef struct
 	uint32	nonce;
 	// GetHeaderHash() goes up to this offset (4+32+32+4+4+4=80 bytes)
 	uint256 blockHeaderHash;
-	CBigNum bnPrimeChainMultiplierBN;
+	//CBigNum bnPrimeChainMultiplierBN;
 	mpz_class mpzPrimeChainMultiplier;
 	// other
 	serverData_t serverData;
