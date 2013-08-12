@@ -92,7 +92,7 @@ bool PrimeTableGetPreviousPrime(unsigned int& p)
 	return false;
 }
 
-/*// Compute Primorial number p#
+// Compute Primorial number p#
 void Primorial(unsigned int p, CBigNum& bnPrimorial)
 {
 	bnPrimorial = 1;
@@ -102,7 +102,7 @@ void Primorial(unsigned int p, CBigNum& bnPrimorial)
 		if (nPrime > p) break;
 		bnPrimorial *= nPrime;
 	}
-}*/
+}
 
 
 // Compute Primorial number p#
@@ -152,7 +152,7 @@ void PrimorialAt(mpz_class& bn, mpz_class& mpzPrimorial)
 // Check Fermat probable primality test (2-PRP): 2 ** (n-1) = 1 (mod n)
 // true: n is probable prime
 // false: n is composite; set fractional length in the nLength output
-/*static bool FermatProbablePrimalityTest(const CBigNum& n, unsigned int& nLength)
+static bool FermatProbablePrimalityTest(const CBigNum& n, unsigned int& nLength)
 {
 	//CBigNum a = 2; // base; Fermat witness
 	CBigNum e = n - 1;
@@ -166,7 +166,7 @@ void PrimorialAt(mpz_class& bn, mpz_class& mpzPrimorial)
 		return error("FermatProbablePrimalityTest() : fractional assert");
 	nLength = (nLength & TARGET_LENGTH_MASK) | nFractionalLength;
 	return false;
-}*/
+}
 
 
 // Check Fermat probable primality test (2-PRP): 2 ** (n-1) = 1 (mod n)
@@ -213,7 +213,7 @@ static bool FermatProbablePrimalityTest(const mpz_class& n, unsigned int& nLengt
 //   true: n is probable prime
 //   false: n is composite; set fractional length in the nLength output
 
-/*static bool EulerLagrangeLifchitzPrimalityTest(const CBigNum& n, bool fSophieGermain, unsigned int& nLength)
+static bool EulerLagrangeLifchitzPrimalityTest(const CBigNum& n, bool fSophieGermain, unsigned int& nLength)
 {
 	//CBigNum a = 2;
 	CBigNum e = (n - 1) >> 1;
@@ -249,7 +249,7 @@ static bool FermatProbablePrimalityTest(const mpz_class& n, unsigned int& nLengt
 		return error("EulerLagrangeLifchitzPrimalityTest() : fractional assert");
 	nLength = (nLength & TARGET_LENGTH_MASK) | nFractionalLength;
 	return false;
-}*/
+}
 
 // Number of primes to test with fast divisibility testing
 static const unsigned int nFastDivPrimes = 50;
@@ -582,7 +582,7 @@ unsigned int TargetFromInt(unsigned int nLength)
 // Get mint value from target
 // Primecoin mint rate is determined by target
 //   mint = 999 / (target length ** 2)
-/*// Inflation is controlled via Moore's Law
+// Inflation is controlled via Moore's Law
 bool TargetGetMint(unsigned int nBits, uint64& nMint)
 {
 	nMint = 0;
@@ -600,10 +600,10 @@ bool TargetGetMint(unsigned int nBits, uint64& nMint)
 		return error("TargetGetMint() : mint value over limit, nBits=%08x", nBits);
 	}
 	return true;
-}*/
+}
 
 // Get next target value
-/*bool TargetGetNext(unsigned int nBits, uint64_t nInterval, uint64_t nTargetSpacing, uint64 nActualSpacing, unsigned int& nBitsNext)
+bool TargetGetNext(unsigned int nBits, uint64_t nInterval, uint64_t nTargetSpacing, uint64 nActualSpacing, unsigned int& nBitsNext)
 {
 	nBitsNext = nBits;
 	// Convert length into fractional difficulty
@@ -635,7 +635,7 @@ bool TargetGetMint(unsigned int nBits, uint64& nMint)
 	if (!TargetSetFractionalDifficulty(nFractionalDifficultyNew, nBitsNext))
 		return error("TargetGetNext() : unable to set fractional difficulty prev=0x%016I64d new=0x%016I64d", nFractionalDifficulty, nFractionalDifficultyNew);
 	return true;
-}*/
+}
 
 
 
@@ -713,7 +713,7 @@ static bool ProbableCunninghamChainTest(const mpz_class& n, bool fSophieGermain,
     return (TargetGetLength(nProbableChainLength) >= 2);
 }
 
-/*static bool ProbableCunninghamChainTestBN(const CBigNum& n, bool fSophieGermain, bool fFermatTest, unsigned int& nProbableChainLength)
+static bool ProbableCunninghamChainTestBN(const CBigNum& n, bool fSophieGermain, bool fFermatTest, unsigned int& nProbableChainLength)
 {
 	nProbableChainLength = 0;
 	CBigNum N = n;
@@ -740,7 +740,7 @@ static bool ProbableCunninghamChainTest(const mpz_class& n, bool fSophieGermain,
 	}
 
 	return (TargetGetLength(nProbableChainLength) >= 2);
-}*/
+}
 
 // Test probable prime chain for: nOrigin
 // Return value:
@@ -986,7 +986,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 			uint8 blockRawData[256] = {0};
 			memcpy(blockRawData, block, 80);
 			uint32 writeIndex = 80;
-			/*sint32 lengthBN = 0;
+			sint32 lengthBN = 0;
 			CBigNum bnPrimeChainMultiplier;
 			bnPrimeChainMultiplier.SetHex(block->mpzPrimeChainMultiplier.get_str(16));
 			std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
@@ -994,16 +994,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 			*(uint8*)(blockRawData+writeIndex) = (uint8)lengthBN; // varInt (we assume it always has a size low enough for 1 byte)
 			writeIndex += 1;
 			memcpy(blockRawData+writeIndex, &bnSerializeData[0], lengthBN);
-			writeIndex += lengthBN;*/
-      sint32 lengthMpz = 0;
-      std::string multiplier = block->mpzPrimeChainMultiplier.get_str(16);
-      std::vector<unsigned char> mpzSerializeData(multiplier.begin(), multiplier.end());
-      lengthMpz = static_cast<sint32>(mpzSerializeData.size());
-      blockRawData[writeIndex] = static_cast<uint8>(lengthMpz);
-      writeIndex += 1;
-      memcpy(blockRawData+writeIndex, &mpzSerializeData[0], lengthMpz);
-      writeIndex += lengthMpz;
-      
+			writeIndex += lengthBN;	
 			// switch endianness
 			for(uint32 f=0; f<256/4; f++)
 			{

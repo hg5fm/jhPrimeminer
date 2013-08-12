@@ -1,14 +1,17 @@
 CXX = g++
-CFLAGS = -mtune=native -O2 -Wall -Wextra
-
-# on linux you need to change -lpthread to -pthread and you need to add -lrt
-# if the linker complains about not finding boost make sure you have the -mt
-# version of libraries, else remove -mt
-LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread -lboost_chrono-mt -lboost_system-mt -L./jhlib/ -ljh
+CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++0x -lrt -static
+LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread
 LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include
 
 OBJS = \
+	jhlib/customBuffer.o \
+	jhlib/fastString.o \
+	jhlib/fastString_eprintf.o \
+	jhlib/hashTable_uint32.o \
+	jhlib/packetBuffer.o \
+	jhlib/simpleHTTP.o \
+	jhlib/simpleList.o \
 	obj/bn2.o \
 	obj/bn2_div.o \
 	obj/jsonBuilder.o \
@@ -30,7 +33,7 @@ OBJS = \
 all: jhprimeminer
   
 obj/%.o: %.cpp
-	$(CXX) -c $(CFLAGS) $(INCLUDEPATHS) $< -o $@ 
+	$(CXX) -c $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) $< -o $@ 
 
 jhprimeminer: $(OBJS:obj/%=obj/%)
 	$(CXX) $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) -o $@ $^
@@ -38,3 +41,4 @@ jhprimeminer: $(OBJS:obj/%=obj/%)
 clean:
 	-rm -f jhprimeminer
 	-rm -f obj/*.o
+	-rm -f jhlib/*.o

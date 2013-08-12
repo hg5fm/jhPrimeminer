@@ -166,26 +166,18 @@ void primecoinBlock_generateHeaderHash(primecoinBlock_t* primecoinBlock, uint8 h
 
 void primecoinBlock_generateBlockHash(primecoinBlock_t* primecoinBlock, uint8 hashOutput[32])
 {
-  uint8 blockHashDataInput[512];
+	uint8 blockHashDataInput[512];
 	memcpy(blockHashDataInput, primecoinBlock, 80);
 	uint32 writeIndex = 80;
-	//sint32 lengthBN = 0;
-  uint8 lengthMpz = 0;
-	//CBigNum bnPrimeChainMultiplier;
-	//bnPrimeChainMultiplier.SetHex(primecoinBlock->mpzPrimeChainMultiplier.get_str(16));
-	//std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
-  //*(uint8*)(blockHashDataInput + writeIndex) = (uint8)lengthMpz;
-	//lengthBN = bnSerializeData.size();
-	//*(uint8*)(blockHashDataInput+writeIndex) = (uint8)lengthBN;
-  std::string multiplier = primecoinBlock->mpzPrimeChainMultiplier.get_str(16);
-  std::vector<unsigned char> mpzSerializeData(multiplier.begin(), multiplier.end());
-  lengthMpz = static_cast<uint8>(mpzSerializeData.size());
-  blockHashDataInput[writeIndex] = lengthMpz;
-  
+	sint32 lengthBN = 0;
+	CBigNum bnPrimeChainMultiplier;
+	bnPrimeChainMultiplier.SetHex(primecoinBlock->mpzPrimeChainMultiplier.get_str(16));
+	std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
+	lengthBN = bnSerializeData.size();
+	*(uint8*)(blockHashDataInput+writeIndex) = (uint8)lengthBN;
 	writeIndex += 1;
-	memcpy(blockHashDataInput+writeIndex, &mpzSerializeData[0], lengthMpz);
-	//writeIndex += lengthBN;
-  writeIndex += lengthMpz;
+	memcpy(blockHashDataInput+writeIndex, &bnSerializeData[0], lengthBN);
+	writeIndex += lengthBN;
 	sha256_context ctx;
 	sha256_starts(&ctx);
 	sha256_update(&ctx, (uint8*)blockHashDataInput, writeIndex);
@@ -273,7 +265,7 @@ bool jhMiner_pushShare_primecoin(uint8 data[256], primecoinBlock_t* primecoinBlo
 			{
 				total_shares++;
 				// the server says no to this share :(
-				printf("Server rejected share (BlockHeight: %u/%u nBits: 0x%08uX)\n", primecoinBlock->serverData.blockHeight, jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex), primecoinBlock->serverData.client_shareBits);
+				printf("Server rejected share (BlockHeight: %lu/%lu nBits: 0x%08luX)\n", primecoinBlock->serverData.blockHeight, jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex), primecoinBlock->serverData.client_shareBits);
 				jsonObject_freeObject(jsonReturnValue);
 				return false;
 			}
@@ -293,18 +285,12 @@ bool jhMiner_pushShare_primecoin(uint8 data[256], primecoinBlock_t* primecoinBlo
 		xptShareToSubmit->nonce = primecoinBlock->nonce;
 		xptShareToSubmit->nTime = primecoinBlock->timestamp;
 		// set multiplier
-		//CBigNum bnPrimeChainMultiplier;
-    //bnPrimeChainMultiplier.SetHex(primecoinBlock->mpzPrimeChainMultiplier.get_str(16));
-		//std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
-		//sint32 lengthBN = bnSerializeData.size();
-		//memcpy(xptShareToSubmit->chainMultiplier, &bnSerializeData[0], lengthBN);
-		//xptShareToSubmit->chainMultiplierSize = lengthBN;
-
-    std::string mpzHex = primecoinBlock->mpzPrimeChainMultiplier.get_str(16);
-    std::vector<unsigned char> mpzSerializeData(mpzHex.begin(), mpzHex.end());
-    memcpy(xptShareToSubmit->chainMultiplier, &mpzSerializeData[0], mpzSerializeData.size());
-    xptShareToSubmit->chainMultiplierSize = mpzSerializeData.size();
-    
+		CBigNum bnPrimeChainMultiplier;
+		bnPrimeChainMultiplier.SetHex(primecoinBlock->mpzPrimeChainMultiplier.get_str(16));
+		std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
+		sint32 lengthBN = bnSerializeData.size();
+		memcpy(xptShareToSubmit->chainMultiplier, &bnSerializeData[0], lengthBN);
+		xptShareToSubmit->chainMultiplierSize = lengthBN;
 		// todo: Set stuff like sieve size
 		if( workData.xptClient && !workData.xptClient->disconnected)
 			xptClient_foundShare(workData.xptClient, xptShareToSubmit);
@@ -1280,8 +1266,8 @@ int main(int argc, char **argv)
 #endif
 	// init memory speedup (if not already done in preMain)
 	//mallocSpeedupInit();
-	/*if( pctx == NULL )
-		pctx = BN_CTX_new();*/
+	if( pctx == NULL )
+		pctx = BN_CTX_new();
 	// init prime table
 	GeneratePrimeTable(commandlineInput.sievePrimeLimit);
 	printf("Sieve Percentage: %u %%\n", nSievePercentage);
