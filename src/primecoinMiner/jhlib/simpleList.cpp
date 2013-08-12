@@ -281,6 +281,7 @@ objectCreatorCache_t* objectCreatorCache_create(uint32 objectSize, uint32 initia
 #else
     raise(SIGTRAP);
 #endif
+  
 	objectCreatorCache_t* objectCreatorCache = (objectCreatorCache_t*)malloc(sizeof(objectCreatorCache_t));
 	memset(objectCreatorCache, 0, sizeof(objectCreatorCache_t));
 	objectCreatorCache->currentCacheStep = initialEntryCount;
