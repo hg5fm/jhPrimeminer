@@ -5,9 +5,9 @@
 #include<map>
 #include <cstdlib>
 #include <cstdio>
-#include <chrono>
+#include <boost/chrono/system_clocks.hpp>
 
-using namespace std::chrono;
+using namespace boost::chrono;
 
 primeStats_t primeStats = {0};
 volatile int total_shares = 0;

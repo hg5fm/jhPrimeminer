@@ -1,5 +1,5 @@
 #include"global.h"
-#include <chrono>
+#include <boost/chrono/system_clocks.hpp>
 #include <iostream>
 
 #ifndef _WIN32
@@ -146,7 +146,7 @@ void xptServer_deleteClient(xptServer_t* xptServer, xptServerClient_t* xptServer
  */
 void xptServer_sendNewBlockToAll(xptServer_t* xptServer, uint32 coinTypeIndex)
 {
-  using namespace std::chrono;
+  using namespace boost::chrono;
   using namespace std;
 	//uint32 time1 = GetTickCount();
   steady_clock::time_point start = steady_clock::now();

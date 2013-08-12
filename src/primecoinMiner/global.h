@@ -1,5 +1,5 @@
 #include <algorithm>
-#include <chrono>
+#include <boost/chrono/system_clocks.hpp>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -192,8 +192,8 @@ typedef struct
 	volatile double bestPrimeChainDifficultySinceLaunch;
 	//uint32 primeLastUpdate;
 	//uint32 startTime;
-  std::chrono::steady_clock::time_point primeLastUpdate;
-  std::chrono::steady_clock::time_point startTime;
+  boost::chrono::steady_clock::time_point primeLastUpdate;
+  boost::chrono::steady_clock::time_point startTime;
 	bool shareFound;
 	bool shareRejected;
 	volatile unsigned int nL1CacheElements;
