@@ -1,6 +1,6 @@
 CXX = g++
-CXXFLAGS = -c -mtune=native -O2 -Wall -Wextra
-INCLUDEFLAGS = -I.
+CXXFLAGS = -fPIC -c -mtune=native -O2 -Wall -Wextra
+INCLUDEFLAGS = -I. 
 OBJ = customBuffer.o fastString.o fastString_eprintf.o hashTable_uint32.o packetBuffer.o simpleList.o
 all: libjh.a
 
@@ -13,3 +13,4 @@ libjh.a: $(OBJ)
 clean:
 	-rm -f *.o
 	-rm -f libjh.a
+

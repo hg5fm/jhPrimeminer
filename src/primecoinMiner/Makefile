@@ -1,17 +1,12 @@
 CXX = g++
-CFLAGS = -mtune=native -O2 -Wall -Wextra -std=c++0x -lrt -static
-LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread
-LIBPATHS = -L/usr/local/lib -L/usr/lib
-INCLUDEPATHS = -I/usr/local/include
+CFLAGS = -mtune=native -O3 -Wall -Wextra
+
+# on linux you will probably need to add -lrt and change -pthread to -lpthread
+LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread -ljh
+LIBPATHS = -L/usr/local/lib -L/usr/lib -L./jhlib
+INCLUDEPATHS = -I/usr/local/include -I/usr/include
 
 OBJS = \
-	jhlib/customBuffer.o \
-	jhlib/fastString.o \
-	jhlib/fastString_eprintf.o \
-	jhlib/hashTable_uint32.o \
-	jhlib/packetBuffer.o \
-	jhlib/simpleHTTP.o \
-	jhlib/simpleList.o \
 	obj/bn2.o \
 	obj/bn2_div.o \
 	obj/jsonBuilder.o \

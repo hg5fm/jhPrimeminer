@@ -223,3 +223,4 @@ unsigned int hashTable_getCount(hashTable_t *hashTable)
 {
 	return hashTable->count;
 }
+

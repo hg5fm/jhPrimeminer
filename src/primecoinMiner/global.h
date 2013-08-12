@@ -65,7 +65,6 @@ int BN2_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 #include <gmpxx.h>
 #include <gmp.h>
 #endif
-#include<stdint.h>
 #include"xptServer.h"
 #include"xptClient.h"
 
@@ -212,7 +211,7 @@ typedef struct
 	uint32	nonce;
 	// GetHeaderHash() goes up to this offset (4+32+32+4+4+4=80 bytes)
 	uint256 blockHeaderHash;
-	CBigNum bnPrimeChainMultiplierBN;
+	//CBigNum bnPrimeChainMultiplierBN; unused
 	mpz_class mpzPrimeChainMultiplier;
 	// other
 	serverData_t serverData;
