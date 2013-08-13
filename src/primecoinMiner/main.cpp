@@ -7,8 +7,8 @@
 #include <cstdio>
 #include <boost/chrono/system_clocks.hpp>
 
-//used for getNumCPU
-#if defined(__FREEBSD__) || defined(__NETBSD__) || defined(__OPENBSD__)
+//used for get_num_cpu
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
@@ -29,10 +29,10 @@ bool error(const char *format, ...)
 	return false;
 }
 
-int getNumCPU(void) {
+int get_num_cpu(void) {
   // based on code from ceretullis on SO
   uint32_t numcpu = 1; // in case we fall through;
-#if defined(__FREEBSD__) || defined(__NETBSD__) || defined(__OPENBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
   int mib[4];
   size_t len = sizeof(numcpu); 
 
@@ -1233,7 +1233,7 @@ int main(int argc, char **argv)
 {
 	// setup some default values
 	commandlineInput.port = 10034;
-  commandlineInput.numThreads = getNumCPU();
+  commandlineInput.numThreads = get_num_cpu();
 	commandlineInput.numThreads = std::max(commandlineInput.numThreads, 1);
 	commandlineInput.sieveSize = 1500000; // default maxSieveSize
 	commandlineInput.sievePercentage = 15; // default 
