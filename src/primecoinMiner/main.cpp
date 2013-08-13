@@ -959,70 +959,66 @@ void *input_thread(void *)
 		int input;
 		input = getchar();
 		switch (input) {
-		case 'q': case 'Q': case 3: //case 27:
-			std::exit(0);
+      case 'q': case 'Q': case 3: //case 27:
+        std::exit(0);
 #ifdef _WIN32
-			return;
+        return;
 #endif
-			break;
-		case '[':
-      // explicit cast to ref removes g++ warning but might be dumb, dunno
-			if (!PrimeTableGetPreviousPrime((unsigned int &) primeStats.nPrimorialMultiplier))
-				error("PrimecoinMiner() : primorial decrement overflow");	
-			printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
-			break;
-		case ']':
-      // explicit cast to ref removes g++ warning but might be dumb, dunno
-			if (!PrimeTableGetNextPrime((unsigned int &)  primeStats.nPrimorialMultiplier))
-				error("PrimecoinMiner() : primorial increment overflow");
-			printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
-			break;
-		case 'p': case 'P':
-			bEnablenPrimorialMultiplierTuning = !bEnablenPrimorialMultiplierTuning;
-			printf("Primorial Multiplier Auto Tuning was %s.\n", bEnablenPrimorialMultiplierTuning ? "Enabled": "Disabled");
-			break;
-		case 's': case 'S':
-			break;
-		case '+': case '=':
-			if (!bOptimalL1Search && nMaxSieveSize < 10000000)
-				nMaxSieveSize += 100000;
-			printf("Sieve size: %u\n", nMaxSieveSize);
-			break;
-		case '-':
-			if (!bOptimalL1Search && nMaxSieveSize > 100000)
-				nMaxSieveSize -= 100000;
-			printf("Sieve size: %u\n", nMaxSieveSize);
-			break;
-		case 0: case 224:
-			{
-				input = getchar();	
-				switch (input)
-				{
-				case 72: // key up
-					if (!bOptimalL1Search && nSievePercentage < 100)
-						nSievePercentage ++;
-					printf("Sieve Percentage: %u%%\n", nSievePercentage);
-					break;
+        break;
+      case 'z': case 'Z':
+        // explicit cast to ref removes g++ warning but might be dumb, dunno
+        if (!PrimeTableGetPreviousPrime((unsigned int &) primeStats.nPrimorialMultiplier))
+          error("PrimecoinMiner() : primorial decrement overflow");	
+        printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
+        break;
 
-				case 80: // key down
-					if (!bOptimalL1Search && nSievePercentage > 3)
-						nSievePercentage --;
-					printf("Sieve Percentage: %u%%\n", nSievePercentage);
-					break;
+      case 'a': case 'A':
+        // explicit cast to ref removes g++ warning but might be dumb, dunno
+        if (!PrimeTableGetNextPrime((unsigned int &)  primeStats.nPrimorialMultiplier))
+          error("PrimecoinMiner() : primorial increment overflow");
+        printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
+        break;
 
-				case 77:    // key right
-					if( nRoundSievePercentage < 98)
-						nRoundSievePercentage++;
-					printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
-					break;
-				case 75:    // key left
-					if( nRoundSievePercentage > 2)
-						nRoundSievePercentage--;
-					printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
-					break;
-				}
-			}
+      case 'p': case 'P':
+        bEnablenPrimorialMultiplierTuning = !bEnablenPrimorialMultiplierTuning;
+        printf("Primorial Multiplier Auto Tuning was %s.\n", bEnablenPrimorialMultiplierTuning ? "Enabled": "Disabled");
+        break;
 
+      case 's': case 'S':
+        if (!bOptimalL1Search && nMaxSieveSize < 10000000)
+          nMaxSieveSize += 100000;
+        printf("Sieve size: %u\n", nMaxSieveSize);
+        break;
+
+      case 'x': case 'X':
+        if (!bOptimalL1Search && nMaxSieveSize > 100000)
+          nMaxSieveSize -= 100000;
+        printf("Sieve size: %u\n", nMaxSieveSize);
+        break;
+
+      case 'd': case 'D':
+        if (!bOptimalL1Search && nSievePercentage < 100)
+          nSievePercentage ++;
+        printf("Sieve Percentage: %u%%\n", nSievePercentage);
+        break;
+
+      case 'c': case 'C':
+        if (!bOptimalL1Search && nSievePercentage > 3)
+          nSievePercentage --;
+        printf("Sieve Percentage: %u%%\n", nSievePercentage);
+        break;
+
+      case 'f': case 'F':
+        if( nRoundSievePercentage < 98)
+          nRoundSievePercentage++;
+        printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
+        break;
+
+      case 'v': case 'V':
+        if( nRoundSievePercentage > 2)
+          nRoundSievePercentage--;
+        printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
+        break;
 		}
 	}
 #ifdef _WIN32
@@ -1207,12 +1203,12 @@ int jhMiner_main_xptMode()
 					double poolDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBitsShare);
 					double blockDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBits);
 					printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
-					printf("---- New Block: %lu - Diff: %.06f / %.06f\n", workData.xptClient->blockWorkInfo.height, blockDiff, poolDiff);
+					printf("---- New Block: %ui - Diff: %.06f / %.06f\n", workData.xptClient->blockWorkInfo.height, blockDiff, poolDiff);
 					printf("---- Total/Valid shares: [ %d / %d ]  -  Max diff: %.05f\n",valid_shares, total_shares, primeStats.bestPrimeChainDifficultySinceLaunch);
 					for (int i = 6; i <= 10; i++)
 					{
 						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime.count()) * 3600.0;
-						printf("---- %d-chain count: %lu  -  %dch/h: %.03f - Share Value: %00.03f\n", 
+						printf("---- %d-chain count: %ui  -  %dch/h: %.03f - Share Value: %00.03f\n", 
 							i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
 					}
 					printf("---- Share Value for the last block: %.06f\n", primeStats.fBlockShareValue);
@@ -1413,20 +1409,20 @@ int main(int argc, char **argv)
 		}
 	}
 
-	printf("\nPPS = 'Primes per Second', Val/h = 'Share Value per Hour'\n");
-	printf("Keyboard shortcuts:\n");
-	printf("   <Ctrl-C>, <Q>     - Quit\n");
-	printf("   <Up arrow key>    - Increment Sieve Percentage\n");
-	printf("   <Down arrow key>  - Decrement Sieve Percentage\n");
-	printf("   <Left arrow key>  - Decrement Round Sieve Percentage\n");
-	printf("   <Right arrow key> - Increment Round Sieve Percentage\n");
-	printf("   <P> - Enable/Disable Round Sieve Percentage Auto Tuning\n");
-	printf("   <[> - Decrement Primorial Multiplier\n");
-	printf("   <]> - Increment Primorial Multiplier\n");
-	printf("   <-> - Decrement Sive size\n");
-	printf("   <+> - Increment Sieve size\n");
-	printf("Note: While the initial auto tuning is in progress several values cannot be changed.\n");
-
+  std::cout << "\nPPS = Primes/sec, Val/h = Share value per hour\n";
+  std::cout << "Keyboard Shortcuts\n";
+  std::cout << "  <Ctrl-C>, Q  - Quit\n";
+  std::cout << "  A            - Increment Sieve Percentage\n";
+  std::cout << "  Z            - Decrement Sieve Percentage\n";
+  std::cout << "  S            - Increment Round Sieve Percentage\n";
+  std::cout << "  X            - Decrement Round Sieve Percentage\n";
+  std::cout << "  P            - Toggle Round Sieve Percentage Auto Tuning\n";
+  std::cout << "  D            - Increment Primorial Multiplier\n";
+  std::cout << "  C            - Decrement Primorial Multiplier\n";
+  std::cout << "  F            - Increment Sieve Size\n";
+  std::cout << "  V            - Decrement Sieve size\n";
+  std::cout << "Note: While the initial auto tuning is in progress several values ";
+  std::cout << "cannot be changed.\n";
 
 	// enter different mainloops depending on protocol mode
 	if( workData.protocolMode == MINER_PROTOCOL_GETWORK )

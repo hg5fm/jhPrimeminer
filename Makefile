@@ -2,8 +2,10 @@ CXX = g++
 CFLAGS = -mtune=native -O3 -Wall -Wextra
 
 # on linux you will probably need to add -lrt and change -pthread to -lpthread
-# on osx you might need to add -mt to end the boost library names
+# and on osx you might need to add -mt to end the of boost library names
 LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread -lboost_system -lboost_chrono
+
+# You might need to edit these paths too
 LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include -I/usr/include
 
