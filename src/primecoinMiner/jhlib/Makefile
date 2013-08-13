@@ -2,13 +2,13 @@ CXX = g++
 CXXFLAGS = -fPIC -c -mtune=native -O2 -Wall -Wextra
 INCLUDEFLAGS = -I. 
 OBJ = customBuffer.o fastString.o fastString_eprintf.o hashTable_uint32.o packetBuffer.o simpleList.o
-all: libjh.a
+all: libjh
 
 %.o: %.cpp
 	$(CXX) $(CFLAGS) $(INCLUDEFLAGS) -c -o $@ $<
 
-libjh.a: $(OBJ)
-	ar rcs $@ $^
+libjh: $(OBJ)
+	$(CXX) 
 
 clean:
 	-rm -f *.o

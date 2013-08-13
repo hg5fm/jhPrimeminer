@@ -7,6 +7,12 @@
 #include <cstdio>
 #include <boost/chrono/system_clocks.hpp>
 
+//used for getNumCPU
+#if defined(__FREEBSD__) || defined(__NETBSD__) || defined(__OPENBSD__)
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
+
 using namespace boost::chrono;
 
 primeStats_t primeStats = {0};
@@ -23,7 +29,7 @@ bool error(const char *format, ...)
 	return false;
 }
 
-int getNumThreads(void) {
+int getNumCPU(void) {
   // based on code from ceretullis on SO
   uint32_t numcpu = 1; // in case we fall through;
 #if defined(__FREEBSD__) || defined(__NETBSD__) || defined(__OPENBSD__)
@@ -32,21 +38,19 @@ int getNumThreads(void) {
 
   /* set the mib for hw.ncpu */
   mib[0] = CTL_HW;
+#ifdef HW_AVAILCPU
   mib[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
-
+#else
+  mib[1] = HW_NCPU;
+#endif
   /* get the number of CPUs from the system */
   sysctl(mib, 2, &numcpu, &len, NULL, 0);
 
   if( numcpu < 1 )
   {
-    mib[1] = HW_NCPU;
-    sysctl( mib, 2, &numcpu, &len, NULL, 0 );
-
-    if( numcpu < 1 )
-    {
-      numcpu = 1;
-    }
+    numcpu = 1;
   }
+
 #elif defined(__linux__) || defined(sun) || defined(__APPLE__)
   numcpu = static_cast<uint32_t>(sysconf(_SC_NPROCESSORS_ONLN));
 #elif defined(_SYSTYPE_SVR4)
@@ -1229,7 +1233,7 @@ int main(int argc, char **argv)
 {
 	// setup some default values
 	commandlineInput.port = 10034;
-  commandlineInput.numThreads = getNumThreads();
+  commandlineInput.numThreads = getNumCPU();
 	commandlineInput.numThreads = std::max(commandlineInput.numThreads, 1);
 	commandlineInput.sieveSize = 1500000; // default maxSieveSize
 	commandlineInput.sievePercentage = 15; // default 

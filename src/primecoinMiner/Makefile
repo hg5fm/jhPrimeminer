@@ -2,9 +2,16 @@ CXX = g++
 CFLAGS = -mtune=native -O3 -Wall -Wextra
 
 # on linux you will probably need to add -lrt and change -pthread to -lpthread
-LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread -ljh
-LIBPATHS = -L/usr/local/lib -L/usr/lib -L./jhlib
+LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread -lboost_system -lboost_chrono
+LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include -I/usr/include
+
+JHLIB = jhlib/customBuffer.o \
+	jhlib/fastString_eprintf.o \
+	jhlib/packetBuffer.o \
+	jhlib/fastString.o \
+	jhlib/hashTable_uint32.o \
+	jhlib/simpleList.o
 
 OBJS = \
 	obj/bn2.o \
@@ -27,10 +34,13 @@ OBJS = \
 
 all: jhprimeminer
   
+jhlib/%.o: jhlib/%.cpp
+	$(CXX) -c $(CFLAGS) -I./jhlib $< -o $@
+
 obj/%.o: %.cpp
 	$(CXX) -c $(CFLAGS) $(INCLUDEPATHS) $< -o $@ 
 
-jhprimeminer: $(OBJS:obj/%=obj/%)
+jhprimeminer: $(OBJS:obj/%=obj/%) $(JHLIB:jhlib/%=jhlib/%)
 	$(CXX) $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) -o $@ $^
 
 clean:
