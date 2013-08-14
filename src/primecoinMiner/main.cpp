@@ -1,11 +1,12 @@
 #include"global.h"
-
+#include "ticker.h"
 //#include<intrin.h>
 #include<ctime>
 #include<map>
 #include <cstdlib>
 #include <cstdio>
-#include <boost/chrono/system_clocks.hpp>
+#include <iostream>
+//#include <boost/chrono/system_clocks.hpp>
 
 //used for get_num_cpu
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
@@ -13,7 +14,7 @@
 #include <sys/sysctl.h>
 #endif
 
-using namespace boost::chrono;
+//using namespace boost::chrono;
 
 primeStats_t primeStats = {0};
 volatile int total_shares = 0;
@@ -369,7 +370,7 @@ void jhMiner_queryWork_primecoin()
 {
 	sint32 rpcErrorCode = 0;
 	//uint32 time1 = GetTickCount();
-  steady_clock::time_point time1 = steady_clock::now();
+  //steady_clock::time_point time1 = steady_clock::now();
 	jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", NULL, &rpcErrorCode);
 	//uint32 time2 = GetTickCount() - time1;
   //steady_clock::duration time2 = steady_clock::now() - time1; unused
@@ -764,12 +765,16 @@ int jhMiner_main_getworkMode()
 		if( loopCounter&1 )
 		{
 			//double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
-      duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
-			if( statsPassedTime.count() < 0.001 )
-				statsPassedTime = duration<double>(0.001); // avoid division by zero
-			//double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime.count() / 1000.0);
-      double primesPerSecond = (double)primeStats.primeChainsFound/statsPassedTime.count();
-			primeStats.primeLastUpdate = steady_clock::now();
+      //duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
+      double statsPassedTime= getTimeMilliseconds() - primeStats.primeLastUpdate;
+			//if( statsPassedTime.count() < 0.001 )
+      if( statsPassedTime < 1.0)
+				//statsPassedTime = duration<double>(0.001); // avoid division by zero
+        statsPassedTime = 1.0;
+			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
+      //double primesPerSecond = (double)primeStats.primeChainsFound/statsPassedTime.count();
+			//primeStats.primeLastUpdate = steady_clock::now();
+      primeStats.primeLastUpdate = getTimeMilliseconds();
 			primeStats.primeChainsFound = 0;
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
 			primeStats.bestPrimeChainDifficulty = 0;
@@ -781,15 +786,15 @@ int jhMiner_main_getworkMode()
 			}
 		}		
 		// wait and check some stats
-		//uint32 time_updateWork = GetTickCount();
-    steady_clock::time_point time_UpdateWork = steady_clock::now();
-    seconds waitTime(4);
+		uint64 time_updateWork = getTimeMilliseconds();
+    //steady_clock::time_point time_UpdateWork = steady_clock::now();
+    //seconds waitTime(4);
 		while( true )
 		{
-			//uint32 passedTime = GetTickCount() - time_updateWork;
-      steady_clock::duration passedTime = steady_clock::now()-time_UpdateWork;
-			//if( passedTime >= 4000 )
-      if( passedTime >= waitTime)
+			uint64 passedTime = getTimeMilliseconds() - time_updateWork;
+      //steady_clock::duration passedTime = steady_clock::now()-time_UpdateWork;
+			if( passedTime >= 4000 )
+      //if( passedTime >= waitTime)
 				break;
 			Sleep(200);
 		}
@@ -842,8 +847,8 @@ void *AutoTuningWorkerThread(void * arg)
 #ifndef _WIN32
   bool bEnabled = static_cast<bool>((uintptr_t)arg);
 #endif
-	//DWORD startTime = GetTickCount();
-  steady_clock::time_point startTime;
+	uint64 startTime = getTimeMilliseconds();
+  //steady_clock::time_point startTime;
 	
 	unsigned int nL1CacheElementsStart = 100000;
 	unsigned int nL1CacheElementsMax   = 3000000;
@@ -956,8 +961,7 @@ void *input_thread(void *)
 {
 
 	while (1) {
-		int input;
-		input = getchar();
+		int input = getchar();
 		switch (input) {
       case 'q': case 'Q': case 3: //case 27:
         std::exit(0);
@@ -965,14 +969,14 @@ void *input_thread(void *)
         return;
 #endif
         break;
-      case 'z': case 'Z':
+      case 'C': case 'c':
         // explicit cast to ref removes g++ warning but might be dumb, dunno
         if (!PrimeTableGetPreviousPrime((unsigned int &) primeStats.nPrimorialMultiplier))
           error("PrimecoinMiner() : primorial decrement overflow");	
         printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
         break;
 
-      case 'a': case 'A':
+      case 'D': case 'd':
         // explicit cast to ref removes g++ warning but might be dumb, dunno
         if (!PrimeTableGetNextPrime((unsigned int &)  primeStats.nPrimorialMultiplier))
           error("PrimecoinMiner() : primorial increment overflow");
@@ -984,42 +988,49 @@ void *input_thread(void *)
         printf("Primorial Multiplier Auto Tuning was %s.\n", bEnablenPrimorialMultiplierTuning ? "Enabled": "Disabled");
         break;
 
-      case 's': case 'S':
+      case 'f': case 'F':
         if (!bOptimalL1Search && nMaxSieveSize < 10000000)
           nMaxSieveSize += 100000;
         printf("Sieve size: %u\n", nMaxSieveSize);
         break;
 
-      case 'x': case 'X':
+      case 'v': case 'V':
         if (!bOptimalL1Search && nMaxSieveSize > 100000)
           nMaxSieveSize -= 100000;
         printf("Sieve size: %u\n", nMaxSieveSize);
         break;
 
-      case 'd': case 'D':
+      case 'a': case 'A':
         if (!bOptimalL1Search && nSievePercentage < 100)
           nSievePercentage ++;
         printf("Sieve Percentage: %u%%\n", nSievePercentage);
         break;
 
-      case 'c': case 'C':
+      case 'z': case 'Z':
         if (!bOptimalL1Search && nSievePercentage > 3)
           nSievePercentage --;
         printf("Sieve Percentage: %u%%\n", nSievePercentage);
         break;
 
-      case 'f': case 'F':
+      case 's': case 'S':
         if( nRoundSievePercentage < 98)
           nRoundSievePercentage++;
         printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
         break;
 
-      case 'v': case 'V':
+      case 'x': case 'X':
         if( nRoundSievePercentage > 2)
           nRoundSievePercentage--;
         printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
         break;
-		}
+      case 'u': case 'U':
+        std::cout << "\nsieve:    " << nSievePercentage << "%, \n";
+        std::cout << "roundsieve: " << (int)nRoundSievePercentage << "%, \n";
+        std::cout << "multiplier: " << primeStats.nPrimorialMultiplier << ", \n";
+        std::cout << "sieve size: " << nMaxSieveSize << ", \n";
+        std::cout << "cache size: " << primeStats.nL1CacheElements << "\n\n";
+        break;
+    }
 	}
 #ifdef _WIN32
 	return;
@@ -1071,8 +1082,8 @@ int jhMiner_main_xptMode()
 	// main thread, don't query work, just wait and process
 	sint32 loopCounter = 0;
 	uint32 xptWorkIdentifier = 0xFFFFFFFF;
-	//uint32 time_multiAdjust = GetTickCount();
-  steady_clock::time_point time_multiAdjust = steady_clock::now();
+	uint64 time_multiAdjust = getTimeMilliseconds();
+  //steady_clock::time_point time_multiAdjust = steady_clock::now();
 	unsigned long lastFiveChainCount = 0;
 	unsigned long lastFourChainCount = 0;
 	while( true )
@@ -1080,17 +1091,17 @@ int jhMiner_main_xptMode()
 		// calculate stats every second tick
 		if( loopCounter&1 )
 		{
-			/*double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
-			double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);*/
-      duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
-      duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
+			double totalRunTime = (double)(getTimeMilliseconds() - primeStats.startTime);
+			double statsPassedTime = (double)(getTimeMilliseconds() - primeStats.primeLastUpdate);
+      //duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
+      //duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
 			
-      if( statsPassedTime.count() < 0.001 )
-				statsPassedTime = milliseconds(1); // avoid division by zero
-			//double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime.count() / 1000.0);
-      double primesPerSecond = (double)primeStats.primeChainsFound / statsPassedTime.count();
-			//primeStats.primeLastUpdate = GetTickCount();
-      primeStats.primeLastUpdate = steady_clock::now();
+      if( statsPassedTime < 1.0 )
+				statsPassedTime = 1.0; // avoid division by zero
+			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
+      //double primesPerSecond = (double)primeStats.primeChainsFound / statsPassedTime.count();
+			primeStats.primeLastUpdate = getTimeMilliseconds();
+      //primeStats.primeLastUpdate = steady_clock::now();
 			primeStats.primeChainsFound = 0;
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
 			primeStats.bestPrimeChainDifficulty = 0;
@@ -1099,15 +1110,15 @@ int jhMiner_main_xptMode()
 			{
 				primeStats.bestPrimeChainDifficultySinceLaunch = std::max<double>((double)primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
 				//double sharesPerHour = ((double)valid_shares / totalRunTime) * 3600000.0;
-				float shareValuePerHour = primeStats.fShareValue / totalRunTime.count() * 3600.0;
-				float fiveSharePerPeriod = ((double)(primeStats.chainCounter[5] - lastFiveChainCount) / statsPassedTime.count()) * 3600.0;
-				float fourSharePerPeriod = ((double)(primeStats.chainCounter[4] - lastFourChainCount) / statsPassedTime.count()) * 3600.0;
+				float shareValuePerHour = primeStats.fShareValue / totalRunTime * 3600.0;
+				float fiveSharePerPeriod = ((double)(primeStats.chainCounter[5] - lastFiveChainCount) / statsPassedTime) * 3600000.0;
+				float fourSharePerPeriod = ((double)(primeStats.chainCounter[4] - lastFourChainCount) / statsPassedTime) * 3600000.0;
 				lastFiveChainCount = primeStats.chainCounter[5];
 				lastFourChainCount = primeStats.chainCounter[4];
 				printf("Val/h %.03f - PPS: %d", shareValuePerHour, (sint32)primesPerSecond);
 				for(int i=4; i<7; i++)
 				{
-					printf(" - %dch/h: %.02f", i, ((double)primeStats.chainCounter[i] / totalRunTime.count()) * 3600.0);
+					printf(" - %dch/h: %.02f", i, ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0);
 				}
 				printf(" - Last 4ch/h: %.02f - Last 5ch/h: %.02f\n", fourSharePerPeriod, fiveSharePerPeriod);
 				//printf(" - Best: %.04f - Max: %.04f\n", primeDifficulty, primeStats.bestPrimeChainDifficultySinceLaunch);
@@ -1115,8 +1126,8 @@ int jhMiner_main_xptMode()
 			}
 		}
 		// wait and check some stats
-		//uint32 time_updateWork = GetTickCount();
-    steady_clock::time_point time_updateWork = steady_clock::now();
+		uint64 time_updateWork = getTimeMilliseconds();
+    //steady_clock::time_point time_updateWork = steady_clock::now();
 		while( true )
 		{
 			/*uint32 tickCount = GetTickCount();
@@ -1128,14 +1139,18 @@ int jhMiner_main_xptMode()
 				time_multiAdjust = GetTickCount();
 			}*/
       
-      steady_clock::time_point tickCount = steady_clock::now();
+      /*steady_clock::time_point tickCount = steady_clock::now();
       steady_clock::duration passedTime = tickCount - time_updateWork;
-      seconds waitTime(60);
+      seconds waitTime(60);*/
+      uint64 tickCount = getTimeMilliseconds();
+      uint64 passedTime = tickCount - time_updateWork;
       
-      if(tickCount - time_multiAdjust >= waitTime)
+      //if(tickCount - time_multiAdjust >= waitTime)
+      if(tickCount - time_multiAdjust >= 60000)
       {
         MultiplierAutoAdjust();
-        time_multiAdjust = steady_clock::now();
+        //time_multiAdjust = steady_clock::now();
+        time_multiAdjust = getTimeMilliseconds();
       }
       
 
@@ -1144,10 +1159,10 @@ int jhMiner_main_xptMode()
 			//	//calculate 5 minute avarages
 			//}
 
-			/*if( passedTime >= 4000 )
-				break;*/
-      if( passedTime.count() >= 4000000000)
-        break;
+			if( passedTime >= 4000 )
+				break;
+      /*if( passedTime.count() >= 4000000000)
+        break;*/
 			xptClient_process(workData.xptClient);
 			char* disconnectReason = false;
 			if( workData.xptClient == NULL || xptClient_isDisconnected(workData.xptClient, &disconnectReason) )
@@ -1196,19 +1211,19 @@ int jhMiner_main_xptMode()
 				}
 				if (workData.xptClient->blockWorkInfo.height > 0)
 				{
-					//double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
+					double totalRunTime = (double)(getTimeMilliseconds() - primeStats.startTime);
 					//double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
-          duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
+          //duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
           //duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
 					double poolDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBitsShare);
 					double blockDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBits);
 					printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
-					printf("---- New Block: %ui - Diff: %.06f / %.06f\n", workData.xptClient->blockWorkInfo.height, blockDiff, poolDiff);
+					printf("---- New Block: %u - Diff: %.06f / %.06f\n", workData.xptClient->blockWorkInfo.height, blockDiff, poolDiff);
 					printf("---- Total/Valid shares: [ %d / %d ]  -  Max diff: %.05f\n",valid_shares, total_shares, primeStats.bestPrimeChainDifficultySinceLaunch);
 					for (int i = 6; i <= 10; i++)
 					{
-						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime.count()) * 3600.0;
-						printf("---- %d-chain count: %ui  -  %dch/h: %.03f - Share Value: %00.03f\n", 
+						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0;
+						printf("---- %d-chain count: %u  -  %dch/h: %.03f - Share Value: %00.03f\n", 
 							i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
 					}
 					printf("---- Share Value for the last block: %.06f\n", primeStats.fBlockShareValue);
@@ -1323,10 +1338,10 @@ int main(int argc, char **argv)
 	//lastBlockCount = queryLocalPrimecoindBlockCount(useLocalPrimecoindForLongpoll);
 
 	// init stats
-	//primeStats.primeLastUpdate = GetTickCount();
-	//primeStats.startTime = GetTickCount();
-  primeStats.primeLastUpdate = steady_clock::now();
-  primeStats.startTime = steady_clock::now();
+	primeStats.primeLastUpdate = getTimeMilliseconds();
+	primeStats.startTime = getTimeMilliseconds();
+  //primeStats.primeLastUpdate = steady_clock::now();
+  //primeStats.startTime = steady_clock::now();
 	primeStats.shareFound = false;
 	primeStats.shareRejected = false;
 	primeStats.primeChainsFound = 0;
@@ -1410,7 +1425,7 @@ int main(int argc, char **argv)
 	}
 
   std::cout << "\nPPS = Primes/sec, Val/h = Share value per hour\n";
-  std::cout << "Keyboard Shortcuts\n";
+  std::cout << "Keyboard Shortcuts (YOU NEED TO PRESS RETURN AFTER EACH KEY)\n";
   std::cout << "  <Ctrl-C>, Q  - Quit\n";
   std::cout << "  A            - Increment Sieve Percentage\n";
   std::cout << "  Z            - Decrement Sieve Percentage\n";

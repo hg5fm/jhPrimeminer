@@ -201,7 +201,7 @@ bool xptClient_process(xptClient_t* xptClient)
 		packetFullSize += xptClient->recvSize;
 	sint32 bytesToReceive = (sint32)(packetFullSize - xptClient->recvIndex);
 	// packet buffer is always large enough at this point
-	sint32 r = recv(xptClient->clientSocket, (char*)(xptClient->recvBuffer->buffer+xptClient->recvIndex), bytesToReceive, 0);
+	ssize_t r = recv(xptClient->clientSocket, (char*)(xptClient->recvBuffer->buffer+xptClient->recvIndex), bytesToReceive, 0);
 	if( r <= 0 )
 	{
 		

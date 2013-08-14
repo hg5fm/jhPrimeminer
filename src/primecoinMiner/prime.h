@@ -314,33 +314,34 @@ public:
 
     CSieveOfEratosthenes(unsigned int nSieveSize, unsigned int nBits, mpz_class& mpzHash, mpz_class& mpzFixedMultiplier)
     {
-        this->nSieveSize = nSieveSize;
-		this->nAllocatedSieveSize = nSieveSize;
-        this->nBits = nBits;
-        this->mpzHash = mpzHash;
-        this->mpzFixedMultiplier = mpzFixedMultiplier;
-        //this->pindexPrev = pindexPrev;
-        nPrimeSeq = 0;
-        nCandidateCount = 0;
-        nCandidateMultiplier = 0;
-        nCandidatesWords = (nSieveSize + nWordBits - 1) / nWordBits;
-        nCandidatesBytes = nCandidatesWords * sizeof(unsigned long);
-        vfCandidates = (unsigned long *)malloc(nCandidatesBytes);
-        vfCandidateBiTwin = (unsigned long *)malloc(nCandidatesBytes);
-        vfCandidateCunningham1 = (unsigned long *)malloc(nCandidatesBytes);
-        memset(vfCandidates, 0, nCandidatesBytes);
-        memset(vfCandidateBiTwin, 0, nCandidatesBytes);
-        memset(vfCandidateCunningham1, 0, nCandidatesBytes);
-		nSievePercentage = 16;
-		this->nChainLength = TargetGetLength(nBits);
-		this->nHalfChainLength = (nChainLength + 1) / 2;
+      this->nSieveSize = nSieveSize;
+      this->nPrimes = 0;
+      this->nAllocatedSieveSize = nSieveSize;
+      this->nBits = nBits;
+      this->mpzHash = mpzHash;
+      this->mpzFixedMultiplier = mpzFixedMultiplier;
+      //this->pindexPrev = pindexPrev;
+      nPrimeSeq = 0;
+      nCandidateCount = 0;
+      nCandidateMultiplier = 0;
+      nCandidatesWords = (nSieveSize + nWordBits - 1) / nWordBits;
+      nCandidatesBytes = nCandidatesWords * sizeof(unsigned long);
+      vfCandidates = (unsigned long *)malloc(nCandidatesBytes);
+      vfCandidateBiTwin = (unsigned long *)malloc(nCandidatesBytes);
+      vfCandidateCunningham1 = (unsigned long *)malloc(nCandidatesBytes);
+      memset(vfCandidates, 0, nCandidatesBytes);
+      memset(vfCandidateBiTwin, 0, nCandidatesBytes);
+      memset(vfCandidateCunningham1, 0, nCandidatesBytes);
+      nSievePercentage = 16;
+      this->nChainLength = TargetGetLength(nBits);
+      this->nHalfChainLength = (nChainLength + 1) / 2;
     }
     
     ~CSieveOfEratosthenes()
     {
-        free(vfCandidates);
-		free(vfCandidateBiTwin);
-		free(vfCandidateCunningham1);
+      free(vfCandidates);
+      free(vfCandidateBiTwin);
+      free(vfCandidateCunningham1);
     }
 
 

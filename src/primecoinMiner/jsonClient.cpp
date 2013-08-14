@@ -1,6 +1,7 @@
 #include"global.h"
 
-#include <boost/chrono/system_clocks.hpp>
+//#include <boost/chrono/system_clocks.hpp>
+#include "ticker.h"
 #include <iostream>
 
 #ifdef _WIN32
@@ -129,7 +130,7 @@ unsigned char * base64_decode(const unsigned char *src, size_t len, uint8* out, 
 
 jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, fStr_t* fStr_parameterData, sint32* errorCode)
 {
-  using namespace boost::chrono;
+  //using namespace boost::chrono;
   using namespace std;
 	*errorCode = JSON_ERROR_NONE;
 	// create connection to host
@@ -145,7 +146,8 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 	}
 
 	//uint32 startTime = GetTickCount(); // todo: Replace with crossplatform method
-  steady_clock::time_point startTime = steady_clock::now();
+  //steady_clock::time_point startTime = steady_clock::now();
+  uint64 startTime = getTimeMilliseconds();
 	// build json request data
 	// example: {"method": "getwork", "params": [], "id":0}
 	fStr_t* fStr_jsonRequestData = fStr_alloc(1024*512); // 64KB (this is also used as the recv buffer!)
@@ -216,10 +218,12 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 		if( n == 0)
 		{
 			//uint32 passedTime = GetTickCount() - startTime;
-      steady_clock::duration passedTime = steady_clock::now() - startTime;
+      //steady_clock::duration passedTime = steady_clock::now() - startTime;
+      uint64 passedTime = getTimeMilliseconds();
 			//printf("JSON request timed out after %dms\n", passedTime);
       cout << "JSON request timed out after ";
-      cout << duration_cast<milliseconds>(passedTime).count() << " ms" << endl;
+      //cout << duration_cast<milliseconds>(passedTime).count() << " ms" << endl;
+      cout << passedTime << " ms" << endl;
 			break;
 		}
 		else if( n == -1 )
@@ -227,7 +231,7 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 			printf("JSON receive error\n");
 			break;
 		}
-		sint32 r = recv(serverSocket, (char*)(recvBuffer+recvIndex), remainingRecvSize, 0);
+		ssize_t r = recv(serverSocket, (char*)(recvBuffer+recvIndex), remainingRecvSize, 0);
 		if( r <= 0 )
 		{
 			// client closed connection

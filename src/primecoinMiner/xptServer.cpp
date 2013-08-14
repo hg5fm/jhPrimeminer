@@ -1,5 +1,6 @@
 #include"global.h"
-#include <boost/chrono/system_clocks.hpp>
+//#include <boost/chrono/system_clocks.hpp>
+#include "ticker.h"
 #include <iostream>
 
 #ifndef _WIN32
@@ -146,10 +147,10 @@ void xptServer_deleteClient(xptServer_t* xptServer, xptServerClient_t* xptServer
  */
 void xptServer_sendNewBlockToAll(xptServer_t* xptServer, uint32 coinTypeIndex)
 {
-  using namespace boost::chrono;
+  //using namespace boost::chrono;
   using namespace std;
-	//uint32 time1 = GetTickCount();
-  steady_clock::time_point start = steady_clock::now();
+	uint64 start = getTimeMilliseconds();
+  //steady_clock::time_point start = steady_clock::now();
 	sint32 workerCount = 0;
 	sint32 payloadCount = 0;
 	for(uint32 i=0; i<xptServer->list_connections->objectCount; i++)
@@ -166,10 +167,11 @@ void xptServer_sendNewBlockToAll(xptServer_t* xptServer, uint32 coinTypeIndex)
 	}
 	//uint32 time2 = GetTickCount() - time1;
 	//printf("Send %d blocks to %d workers in %dms\n", payloadCount, workerCount,time2);
-  milliseconds end = duration_cast<milliseconds>(steady_clock::now() - start);
+  //milliseconds end = duration_cast<milliseconds>(steady_clock::now() - start);
+  uint64 end = getTimeMilliseconds() - start;
   cout << "Send " << payloadCount << " blocks to ";
   cout << workerCount << " workers ";
-  cout << "in " << end.count() << " ms" << endl;
+  cout << "in " << end << " ms" << endl;
 }
 
 /*
