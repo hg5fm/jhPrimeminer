@@ -52,7 +52,7 @@ int esprintf_xutf8(char *out, char *s, int padRight, int padZero, int width)
 
 int esprintf_d(char *out, int value, int padRight, int padZero, int width)
 {
-	int c = 0;
+	//int c = 0; unused
 	char DezimalStr[32];
 	int dl = 0; //DezimalLength
 	int negative = 0;
@@ -198,14 +198,14 @@ int esprintf_hf(char *out, float valueF, int padRight, int padZero, int width)
 	*out = '.';
 	out++;		
 
-	int dl2 = dl;
+	//int dl2 = dl; unused
 
 	value = (sint32)((valueF - floor(valueF))*100000.0f);
-	c = 0;
+	//c = 0; unused
 	dl = 0; //DezimalLength
 	padZero = 1;
 	width = 6;
-	padRight = 0;
+	//padRight = 0; unused
 	negative = 0;
 	if( value < 0 )
 	{
@@ -281,14 +281,14 @@ int esprintf_hf(char *out, float valueF, int padRight, int padZero, int width)
 int esprintf_c(char *out, char value, int padRight, int padZero, int width)
 {
 	// todo: support for padRight etc.
-	int c = 0;
+	//int c = 0; unused
 	out[0] = value;
 	return 1;
 }
 
 int esprintf_b(char *out, signed long long value, int padRight, int padZero, int width) //"Big" - signed long long
 {
-	int c = 0;
+	//int c = 0; unused
 	char DezimalStr[32];
 	int dl = 0; //DezimalLength
 	int negative = 0;
@@ -360,7 +360,7 @@ int esprintf_b(char *out, signed long long value, int padRight, int padZero, int
 
 int esprintf_u(char *out, unsigned int value, int padRight, int padZero, int width)
 {
-	int c = 0;
+	//int c = 0; unused
 	char DezimalStr[32];
 	int dl = 0; //DezimalLength
 	if( value == 0 )
@@ -413,7 +413,7 @@ int esprintf_u(char *out, unsigned int value, int padRight, int padZero, int wid
 
 int esprintf_X(char *out, unsigned int value, int padRight, int padZero, int width, int UpperCase)
 {
-	int c = 0;
+	//int c = 0; unused
 	char DezimalStr[32];
 	int dl = 0; //HexLength
 	while(value)

@@ -1024,7 +1024,7 @@ void *input_thread(void *)
         printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
         break;
       case 'u': case 'U':
-        std::cout << "\nsieve:    " << nSievePercentage << "%, \n";
+        std::cout << "\nsieve:      " << nSievePercentage << "%, \n";
         std::cout << "roundsieve: " << (int)nRoundSievePercentage << "%, \n";
         std::cout << "multiplier: " << primeStats.nPrimorialMultiplier << ", \n";
         std::cout << "sieve size: " << nMaxSieveSize << ", \n";
