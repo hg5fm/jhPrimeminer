@@ -1,7 +1,7 @@
 CXX = g++
 CFLAGS = -mtune=native -O3 -Wall -Wextra
 
-# on linux you will probably need to add -lrt and change -pthread to -lpthread
+# on linux if you get complaints about missing clock_gettime, try adding -lrt to LIBS
 LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread
 
 # You might need to edit these paths too
@@ -44,7 +44,7 @@ src/primecoinMiner/%.o: src/primecoinMiner/%.cpp
 	$(CXX) -c $(CFLAGS) $(INCLUDEPATHS) $< -o $@ 
 
 jhprimeminer: $(OBJS:src/primecoinMiner/%=src/primecoinMiner/%) $(JHLIB:src/primecoinMiner/jhlib/%=src/primecoinMiner/jhlib/%)
-	$(CXX) $(CFLAGS) $(LIBPATHS) $(LIBS) $(INCLUDEPATHS) -o $@ $^
+	$(CXX) $(CFLAGS) $(LIBPATHS) $(INCLUDEPATHS) -o $@ $^ $(LIBS)
 
 clean:
 	-rm -f jhprimeminer
