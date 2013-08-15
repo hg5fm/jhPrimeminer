@@ -18,6 +18,7 @@ JHLIB = src/primecoinMiner/jhlib/customBuffer.o \
 OBJS = \
 	src/primecoinMiner/bn2.o \
 	src/primecoinMiner/bn2_div.o \
+	src/primecoinMiner/ticker.o \
 	src/primecoinMiner/jsonBuilder.o \
 	src/primecoinMiner/jsonClient.o \
 	src/primecoinMiner/jsonObject.o \
