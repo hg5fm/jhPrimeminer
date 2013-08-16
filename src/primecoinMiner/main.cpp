@@ -6,15 +6,12 @@
 #include <cstdlib>
 #include <cstdio>
 #include <iostream>
-//#include <boost/chrono/system_clocks.hpp>
 
 //used for get_num_cpu
 #if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
-
-//using namespace boost::chrono;
 
 primeStats_t primeStats = {0};
 volatile int total_shares = 0;
@@ -370,10 +367,8 @@ void jhMiner_queryWork_primecoin()
 {
 	sint32 rpcErrorCode = 0;
 	//uint32 time1 = GetTickCount();
-  //steady_clock::time_point time1 = steady_clock::now();
 	jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", NULL, &rpcErrorCode);
 	//uint32 time2 = GetTickCount() - time1;
-  //steady_clock::duration time2 = steady_clock::now() - time1; unused
 	// printf("request time: %dms\n", time2);
 	if( jsonReturnValue == NULL )
 	{
@@ -765,7 +760,6 @@ int jhMiner_main_getworkMode()
 		if( loopCounter&1 )
 		{
 			//double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
-      //duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
       double statsPassedTime= getTimeMilliseconds() - primeStats.primeLastUpdate;
 			//if( statsPassedTime.count() < 0.001 )
       if( statsPassedTime < 1.0)
@@ -773,7 +767,6 @@ int jhMiner_main_getworkMode()
         statsPassedTime = 1.0;
 			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
       //double primesPerSecond = (double)primeStats.primeChainsFound/statsPassedTime.count();
-			//primeStats.primeLastUpdate = steady_clock::now();
       primeStats.primeLastUpdate = getTimeMilliseconds();
 			primeStats.primeChainsFound = 0;
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
@@ -787,12 +780,10 @@ int jhMiner_main_getworkMode()
 		}		
 		// wait and check some stats
 		uint64 time_updateWork = getTimeMilliseconds();
-    //steady_clock::time_point time_UpdateWork = steady_clock::now();
     //seconds waitTime(4);
 		while( true )
 		{
 			uint64 passedTime = getTimeMilliseconds() - time_updateWork;
-      //steady_clock::duration passedTime = steady_clock::now()-time_UpdateWork;
 			if( passedTime >= 4000 )
       //if( passedTime >= waitTime)
 				break;
@@ -848,7 +839,6 @@ void *AutoTuningWorkerThread(void * arg)
   bool bEnabled = static_cast<bool>((uintptr_t)arg);
 #endif
 	uint64 startTime = getTimeMilliseconds();
-  //steady_clock::time_point startTime;
 	
 	unsigned int nL1CacheElementsStart = 100000;
 	unsigned int nL1CacheElementsMax   = 3000000;
@@ -1083,7 +1073,6 @@ int jhMiner_main_xptMode()
 	sint32 loopCounter = 0;
 	uint32 xptWorkIdentifier = 0xFFFFFFFF;
 	uint64 time_multiAdjust = getTimeMilliseconds();
-  //steady_clock::time_point time_multiAdjust = steady_clock::now();
 	unsigned long lastFiveChainCount = 0;
 	unsigned long lastFourChainCount = 0;
 	while( true )
@@ -1093,15 +1082,12 @@ int jhMiner_main_xptMode()
 		{
 			double totalRunTime = (double)(getTimeMilliseconds() - primeStats.startTime);
 			double statsPassedTime = (double)(getTimeMilliseconds() - primeStats.primeLastUpdate);
-      //duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
-      //duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
 			
       if( statsPassedTime < 1.0 )
 				statsPassedTime = 1.0; // avoid division by zero
 			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
       //double primesPerSecond = (double)primeStats.primeChainsFound / statsPassedTime.count();
 			primeStats.primeLastUpdate = getTimeMilliseconds();
-      //primeStats.primeLastUpdate = steady_clock::now();
 			primeStats.primeChainsFound = 0;
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
 			primeStats.bestPrimeChainDifficulty = 0;
@@ -1127,7 +1113,6 @@ int jhMiner_main_xptMode()
 		}
 		// wait and check some stats
 		uint64 time_updateWork = getTimeMilliseconds();
-    //steady_clock::time_point time_updateWork = steady_clock::now();
 		while( true )
 		{
 			/*uint32 tickCount = GetTickCount();
@@ -1139,9 +1124,6 @@ int jhMiner_main_xptMode()
 				time_multiAdjust = GetTickCount();
 			}*/
       
-      /*steady_clock::time_point tickCount = steady_clock::now();
-      steady_clock::duration passedTime = tickCount - time_updateWork;
-      seconds waitTime(60);*/
       uint64 tickCount = getTimeMilliseconds();
       uint64 passedTime = tickCount - time_updateWork;
       
@@ -1149,7 +1131,6 @@ int jhMiner_main_xptMode()
       if(tickCount - time_multiAdjust >= 60000)
       {
         MultiplierAutoAdjust();
-        //time_multiAdjust = steady_clock::now();
         time_multiAdjust = getTimeMilliseconds();
       }
       
@@ -1161,8 +1142,6 @@ int jhMiner_main_xptMode()
 
 			if( passedTime >= 4000 )
 				break;
-      /*if( passedTime.count() >= 4000000000)
-        break;*/
 			xptClient_process(workData.xptClient);
 			char* disconnectReason = false;
 			if( workData.xptClient == NULL || xptClient_isDisconnected(workData.xptClient, &disconnectReason) )
@@ -1212,9 +1191,6 @@ int jhMiner_main_xptMode()
 				if (workData.xptClient->blockWorkInfo.height > 0)
 				{
 					double totalRunTime = (double)(getTimeMilliseconds() - primeStats.startTime);
-					//double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
-          //duration<double> totalRunTime = steady_clock::now() - primeStats.startTime;
-          //duration<double> statsPassedTime = steady_clock::now() - primeStats.primeLastUpdate;
 					double poolDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBitsShare);
 					double blockDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBits);
 					printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
@@ -1340,8 +1316,6 @@ int main(int argc, char **argv)
 	// init stats
 	primeStats.primeLastUpdate = getTimeMilliseconds();
 	primeStats.startTime = getTimeMilliseconds();
-  //primeStats.primeLastUpdate = steady_clock::now();
-  //primeStats.startTime = steady_clock::now();
 	primeStats.shareFound = false;
 	primeStats.shareRejected = false;
 	primeStats.primeChainsFound = 0;

@@ -1,6 +1,5 @@
 #include"global.h"
 #include <ctime>
-//#include <boost/chrono/system_clocks.hpp>
 #include "ticker.h"
 
 
@@ -9,7 +8,6 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 
 void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 {
-  //using namespace boost::chrono;
 	//printf("PrimecoinMiner started\n");
 	//SetThreadPriority(THREAD_PRIORITY_LOWEST);
 	//RenameThread("primecoin-miner");
@@ -39,8 +37,6 @@ void BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
 
 	uint64 nTime = getTimeMilliseconds() + 1000*600;
 	uint64 nStatTime = getTimeMilliseconds() + 2000;
-  /*steady_clock::time_point nTime = steady_clock::now() + seconds(600);
-  steady_clock::time_point nStatTime = steady_clock::now() + seconds(2);*/
 	
 	// note: originally a wanted to loop as long as (primecoinBlock->workDataHash != jhMiner_getCurrentWorkHash()) did not happen
 	//		 but I noticed it might be smarter to just check if the blockHeight has changed, since that is what is really important

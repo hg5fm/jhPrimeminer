@@ -1,6 +1,4 @@
 #include"global.h"
-
-//#include <boost/chrono/system_clocks.hpp>
 #include "ticker.h"
 #include <iostream>
 
@@ -130,7 +128,6 @@ unsigned char * base64_decode(const unsigned char *src, size_t len, uint8* out, 
 
 jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, fStr_t* fStr_parameterData, sint32* errorCode)
 {
-  //using namespace boost::chrono;
   using namespace std;
 	*errorCode = JSON_ERROR_NONE;
 	// create connection to host
@@ -146,7 +143,6 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 	}
 
 	//uint32 startTime = GetTickCount(); // todo: Replace with crossplatform method
-  //steady_clock::time_point startTime = steady_clock::now();
   uint64 startTime = getTimeMilliseconds();
 	// build json request data
 	// example: {"method": "getwork", "params": [], "id":0}
@@ -218,11 +214,9 @@ jsonObject_t* jsonClient_request(jsonRequestTarget_t* server, char* methodName, 
 		if( n == 0)
 		{
 			//uint32 passedTime = GetTickCount() - startTime;
-      //steady_clock::duration passedTime = steady_clock::now() - startTime;
       uint64 passedTime = getTimeMilliseconds();
 			//printf("JSON request timed out after %dms\n", passedTime);
       cout << "JSON request timed out after ";
-      //cout << duration_cast<milliseconds>(passedTime).count() << " ms" << endl;
       cout << passedTime << " ms" << endl;
 			break;
 		}
