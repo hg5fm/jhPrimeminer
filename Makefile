@@ -1,8 +1,12 @@
 CXX = g++
 CFLAGS = -mtune=native -O3 -Wall -Wextra
 
-# on linux if you get complaints about missing clock_gettime, try adding -lrt to LIBS
+OSVERSION := $(shell uname -s)
 LIBS = -lgmp -lgmpxx -lcrypto -lssl -pthread
+
+ifeq ($(OSVERSION),Linux)
+	LIBS += -lrt
+endif
 
 # You might need to edit these paths too
 LIBPATHS = -L/usr/local/lib -L/usr/lib

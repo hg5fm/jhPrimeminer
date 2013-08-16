@@ -1031,7 +1031,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 	//	delete *psieve;
 	//	*psieve = NULL;
 	//}
-  
+  delete multiplierSet;
 	return false; // stop as timed out
 }
 
