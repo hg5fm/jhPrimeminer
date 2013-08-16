@@ -178,11 +178,11 @@ jsonObject_t* jsonParser_parseObject(jsonParser_t* jsonParser)
 			return (jsonObject_t*)jsonObjectBool;
 		}
 		else if( (jsonParser->dataCurrentPtr+5 < jsonParser->dataEnd) &&
-			(jsonParser->dataCurrentPtr[0] == 'f' || jsonParser->dataCurrentPtr[0] == 'f') &&
-			(jsonParser->dataCurrentPtr[1] == 'a' || jsonParser->dataCurrentPtr[1] == 'a') &&
-			(jsonParser->dataCurrentPtr[2] == 'l' || jsonParser->dataCurrentPtr[2] == 'l') &&
-			(jsonParser->dataCurrentPtr[3] == 's' || jsonParser->dataCurrentPtr[3] == 's') &&
-			(jsonParser->dataCurrentPtr[4] == 'e' || jsonParser->dataCurrentPtr[4] == 'e') )
+			(jsonParser->dataCurrentPtr[0] == 'f' || jsonParser->dataCurrentPtr[0] == 'F') &&
+			(jsonParser->dataCurrentPtr[1] == 'a' || jsonParser->dataCurrentPtr[1] == 'A') &&
+			(jsonParser->dataCurrentPtr[2] == 'l' || jsonParser->dataCurrentPtr[2] == 'L') &&
+			(jsonParser->dataCurrentPtr[3] == 's' || jsonParser->dataCurrentPtr[3] == 'S') &&
+			(jsonParser->dataCurrentPtr[4] == 'e' || jsonParser->dataCurrentPtr[4] == 'E') )
 		{
 			jsonObjectBool_t* jsonObjectBool = (jsonObjectBool_t*)malloc(sizeof(jsonObjectBool_t));
 			//RtlZeroMemory(jsonObjectBool, sizeof(jsonObjectBool_t));
