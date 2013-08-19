@@ -1096,7 +1096,7 @@ int jhMiner_main_xptMode()
 			{
 				primeStats.bestPrimeChainDifficultySinceLaunch = std::max<double>((double)primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
 				//double sharesPerHour = ((double)valid_shares / totalRunTime) * 3600000.0;
-				float shareValuePerHour = primeStats.fShareValue / totalRunTime * 3600.0;
+				float shareValuePerHour = primeStats.fShareValue / totalRunTime * 3600000.0;
 				float fiveSharePerPeriod = ((double)(primeStats.chainCounter[5] - lastFiveChainCount) / statsPassedTime) * 3600000.0;
 				float fourSharePerPeriod = ((double)(primeStats.chainCounter[4] - lastFourChainCount) / statsPassedTime) * 3600000.0;
 				lastFiveChainCount = primeStats.chainCounter[5];
