@@ -12,6 +12,14 @@ endif
 LIBPATHS = -L/usr/local/lib -L/usr/lib
 INCLUDEPATHS = -I/usr/local/include -I/usr/include
 
+ifeq ($(OSVERSION),Darwin)
+	GOT_MACPORTS := $(shell which port)
+ifdef GOT_MACPORTS
+	LIBPATHS += -L/opt/local/lib
+	INCLUDEPATHS += -I/opt/local/include
+endif
+endif
+
 JHLIB = src/primecoinMiner/jhlib/customBuffer.o \
 	src/primecoinMiner/jhlib/fastString_eprintf.o \
 	src/primecoinMiner/jhlib/packetBuffer.o \
