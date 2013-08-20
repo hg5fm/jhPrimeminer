@@ -1101,7 +1101,7 @@ int jhMiner_main_xptMode()
 				float fourSharePerPeriod = ((double)(primeStats.chainCounter[4] - lastFourChainCount) / statsPassedTime) * 3600000.0;
 				lastFiveChainCount = primeStats.chainCounter[5];
 				lastFourChainCount = primeStats.chainCounter[4];
-				printf("Val/h %.03f - PPS: %d", shareValuePerHour, (sint32)primesPerSecond);
+				printf("Val/h %.06f - PPS: %d", shareValuePerHour, (sint32)primesPerSecond);
 				for(int i=4; i<7; i++)
 				{
 					printf(" - %dch/h: %.02f", i, ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0);
@@ -1184,7 +1184,7 @@ int jhMiner_main_xptMode()
 					for (int i = 6; i <= 10; i++)
 					{
 						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0;
-						printf("---- %d-chain count: %u  -  %dch/h: %.03f - Share Value: %00.03f\n", 
+						printf("---- %d-chain count: %u  -  %dch/h: %.03f - Share Value: %00.06f\n", 
 							i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
 					}
 					printf("---- Share Value for the last block: %.06f\n", primeStats.fBlockShareValue);
