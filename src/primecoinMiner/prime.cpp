@@ -1007,7 +1007,7 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 			float shareValue = GetValueOfShareMajor( shareDifficultyMajor);
 			float shareDiff = GetChainDifficulty(nProbableChainLength);
       
-			printf("%s - SHARE FOUND !!! (Th#: %u) ---  DIFF: %f - VAL: %.3f", sNow, threadIndex, shareDiff, shareValue);
+			printf("%s - SHARE FOUND !!! (Th#: %u) ---  DIFF: %f - VAL: %.6f", sNow, threadIndex, shareDiff, shareValue);
 			if(shareDifficultyMajor >= 6)
 				printf("    >%u\n", shareDifficultyMajor);
 			else
