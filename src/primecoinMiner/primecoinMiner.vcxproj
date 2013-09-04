@@ -256,6 +256,7 @@
     <ClCompile Include="bn2.cpp" />
     <ClCompile Include="bn2_div.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="mallocSpeedup.cpp" />
     <ClCompile Include="miner.cpp" />
     <ClCompile Include="prime.cpp" />
     <ClCompile Include="jhlib\bmp.cpp" />

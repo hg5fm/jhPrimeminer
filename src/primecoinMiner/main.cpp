@@ -5,6 +5,31 @@
 #include<map>
 #include<conio.h>
 
+typedef struct  
+{
+	char* workername;
+	char* workerpass;
+	char* host;
+	sint32 port;
+	sint32 numThreads;
+	sint32 sieveSize;
+	sint32 sievePercentage;
+	sint32 roundSievePercentage;
+	sint32 sievePrimeLimit;	// how many primes should be sieved
+	unsigned int L1CacheElements;
+	unsigned int primorialMultiplier;
+	bool enableCacheTunning;
+	sint32 target;
+	sint32 sieveExtensions;
+	// mode option
+	uint32 mode;
+}commandlineInput_t;
+
+#define MINER_MODE_XPM_DEFAULT			0	// use the optimized original code
+#define MINER_MODE_XPM_MULTIPASSSIEVE	1	// use the v0.4 sieve method
+#define MINER_MODE_XPM_OPENCL			2	// use OpenCL for sieving, CPU for chain test
+
+commandlineInput_t commandlineInput = {0};
 
 primeStats_t primeStats = {0};
 volatile int total_shares = 0;
@@ -14,13 +39,20 @@ unsigned int nSievePercentage;
 unsigned int nTarget;
 char* dt;
 
+minerSettings_t minerSettings = {0};
+
+#define DEFAULT_SIEVE_SIZE			(1024*2000)
+#define DEFAULT_PRIMES_TO_SIEVE		(28000)
+
+char* minerVersionString = "jhPrimeminer v0.5 r5 (official)"; // this is the version string displayed on the worker live stats page (max 45 characters)
+
 bool error(const char *format, ...)
 {
 	puts(format);
-	//__debugbreak();
 	return false;
 }
 
+// Important: Once you are done with the fStr method
 
 bool hex2bin(unsigned char *p, const char *hexstr, size_t len)
 {
@@ -149,32 +181,193 @@ void primecoinBlock_generateBlockHash(primecoinBlock_t* primecoinBlock, uint8 ha
 
 typedef struct  
 {
-	bool dataIsValid;
-	uint8 data[128];
-	uint32 dataHash; // used to detect work data changes
-	uint8 serverData[32]; // contains data from the server 
-}workDataEntry_t;
+	uint32 timestamp;
+	uint32 numberOfProcessedSieves;
+	uint32 proofOfWork_chainLength;
+	uint8  proofOfWork_chainType;
+	uint32 proofOfWork_multiplier;
+	uint32 proofOfWork_nonce;
+	uint32 proofOfWork_depth;
+	uint32 nonceEnd;
+}xpmScannedNonceRange_t;
+
+typedef struct  
+{
+	uint8 merkleRoot[32];
+	uint8 prevBlockHash[32];
+	uint32 timestampStart;
+	uint32 sieveSize;
+	uint32 primesToSieve;
+	// note: Server constraints like nonceMin/nonceMax dont need to be send to the server
+	std::vector<xpmScannedNonceRange_t> scannedRange; // list of scanned range
+	bool finished; // when set to true, the data is ready to be sent
+}xpmProofOfWork_t;
 
 typedef struct  
 {
 	CRITICAL_SECTION cs;
 	uint8 protocolMode;
 	// xpm
-	workDataEntry_t workEntry[128]; // work data for each thread (up to 128)
+	xptBlockWorkInfo_t workEntryQueue[256]; // work data for each thread (up to 2 per thread)
+	uint32 workEntrySize; // number of queued elements
 	// x.pushthrough
 	xptClient_t* xptClient;
+	// proof of work
+	// note: We sort proofOfWork data not by threadId, but instead by merkleRoot, so we can also handle special test data issued by the server in the same struct
+	std::vector<xpmProofOfWork_t> proofOfWork;
+	uint32 mostRecentBlockHeight; // updated whenever we receive new data
+	//xpmProofOfWork_t proofOfWork[128]; // proof of work info for each thread (up to 128, like workEntry)
 }workData_t;
 
 #define MINER_PROTOCOL_GETWORK		(1)
 #define MINER_PROTOCOL_STRATUM		(2)
 #define MINER_PROTOCOL_XPUSHTHROUGH	(3)
 
-workData_t workData;
+workData_t workData = {0};
 
 jsonRequestTarget_t jsonRequestTarget; // rpc login data
 jsonRequestTarget_t jsonLocalPrimeCoin; // rpc login data
 bool useLocalPrimecoindForLongpoll;
 
+/*
+ * Initializes a new proof of work chain (same merkleRoot and prevBlockHash)
+ */
+void jhMiner_primecoinBeginProofOfWork(uint8 merkleRoot[32], uint8 prevBlockHash[32], uint32 sieveSize, uint32 primesToSieve, uint32 timestampStart)
+{
+	//printf("Starting proof of work hash...\n");
+	xpmProofOfWork_t proofOfWork = {0};
+	memcpy(proofOfWork.merkleRoot, merkleRoot, 32);
+	memcpy(proofOfWork.prevBlockHash, prevBlockHash, 32);
+	proofOfWork.timestampStart = timestampStart;
+	proofOfWork.sieveSize = sieveSize;
+	proofOfWork.primesToSieve = primesToSieve;
+	EnterCriticalSection(&workData.cs);
+	workData.proofOfWork.push_back(proofOfWork);
+	LeaveCriticalSection(&workData.cs);
+}
+
+/*
+ * Adds the result of the processed work (proof of work) to the local queued work results for later transmission to server
+ */
+void jhMiner_primecoinAddProofOfWork(uint8 merkleRoot[32], uint8 prevBlockHash[32], uint32 numberOfProcessedSieves, uint32 timestamp, uint32 proofChainLength, uint8 proofChainType, uint32 proofNonce, uint32 proofMultiplier, uint32 proofDepth)
+{
+	//printf("Feeding proof of work hash, timestamp: %08X sieves: %d\n", timestamp, numberOfProcessedSieves);
+	EnterCriticalSection(&workData.cs);
+	for(uint32 i=0; i<workData.proofOfWork.size(); i++)
+	{
+		if( memcmp(workData.proofOfWork[i].prevBlockHash, prevBlockHash, 32) == 0 && memcmp(workData.proofOfWork[i].merkleRoot, merkleRoot, 32) == 0 )
+		{
+			xpmScannedNonceRange_t xpmScannedNonceRange = {0};
+			xpmScannedNonceRange.proofOfWork_chainLength = proofChainLength;
+			xpmScannedNonceRange.proofOfWork_chainType = proofChainLength;
+			xpmScannedNonceRange.proofOfWork_nonce = proofNonce;
+			xpmScannedNonceRange.proofOfWork_multiplier = proofMultiplier;
+			xpmScannedNonceRange.proofOfWork_depth = proofDepth;
+			xpmScannedNonceRange.numberOfProcessedSieves = numberOfProcessedSieves;
+			xpmScannedNonceRange.timestamp = timestamp;
+			xpmScannedNonceRange.nonceEnd = 0xFFFFFFFF; // full range scan
+			workData.proofOfWork[i].scannedRange.push_back(xpmScannedNonceRange);
+			break;
+		}
+	}
+	LeaveCriticalSection(&workData.cs);
+}
+
+void jhMiner_primecoinCompleteProofOfWork(uint8 merkleRoot[32], uint8 prevBlockHash[32], uint32 nonceEnd, uint32 numberOfProcessedSieves, uint32 timestamp, uint32 proofChainLength, uint8 proofChainType, uint32 proofNonce, uint32 proofMultiplier, uint32 proofDepth)
+{
+	//printf("Finishing proof of work hash, nonceEnd: %08X sieves: %d\n", nonceEnd, numberOfProcessedSieves);
+	EnterCriticalSection(&workData.cs);
+	for(uint32 i=0; i<workData.proofOfWork.size(); i++)
+	{
+		if( memcmp(workData.proofOfWork[i].prevBlockHash, prevBlockHash, 32) == 0 && memcmp(workData.proofOfWork[i].merkleRoot, merkleRoot, 32) == 0 )
+		{
+			xpmScannedNonceRange_t xpmScannedNonceRange = {0};
+			xpmScannedNonceRange.proofOfWork_chainLength = proofChainLength;
+			xpmScannedNonceRange.proofOfWork_chainType = proofChainLength;
+			xpmScannedNonceRange.proofOfWork_nonce = proofNonce;
+			xpmScannedNonceRange.proofOfWork_multiplier = proofMultiplier;
+			xpmScannedNonceRange.proofOfWork_depth = proofDepth;
+			xpmScannedNonceRange.numberOfProcessedSieves = numberOfProcessedSieves;
+			xpmScannedNonceRange.timestamp = timestamp;
+			xpmScannedNonceRange.nonceEnd = nonceEnd;
+			workData.proofOfWork[i].scannedRange.push_back(xpmScannedNonceRange);
+			workData.proofOfWork[i].finished = true;
+			break;
+		}
+	}
+	LeaveCriticalSection(&workData.cs);
+}
+
+/*
+ * Called periodically (about once a minute) to send the current collected and finished proof of work data to the server
+ * Must be called by the same thread that also manages the xptClient struct
+ */
+void jhMiner_primecoinSendProofOfWork()
+{
+	if( workData.xptClient == NULL )
+		return; // not connected
+	EnterCriticalSection(&workData.cs);
+	// count how many PoW blocks we have to send
+	uint32 numPoW = 0;
+	for(uint32 i=0; i<workData.proofOfWork.size(); i++)
+	{
+		if( workData.proofOfWork[i].finished )
+			numPoW++;
+	}
+	if( numPoW == 0 )
+	{
+		// nothing to send, quit early
+		LeaveCriticalSection(&workData.cs);
+		return;
+	}
+	// start building packet
+	bool sendError = false;
+	xptClient_t* xptClient = workData.xptClient;
+	xptPacketbuffer_beginWritePacket(xptClient->sendBuffer, XPT_OPC_C_SUBMIT_POW);
+	// write number of PoWs that follow
+	xptPacketbuffer_writeU16(xptClient->sendBuffer, &sendError, numPoW);
+	// write PoW data
+	for(uint32 i=0; i<workData.proofOfWork.size(); i++)
+	{
+		if( workData.proofOfWork[i].finished == false )
+			continue;
+		xpmProofOfWork_t* proofOfWork = &workData.proofOfWork[i];
+		// assert(proofOfWork->scannedRange.size() == 0 );
+		uint32 numCompletedNonceRange = proofOfWork->scannedRange.size() - 1;
+		xptPacketbuffer_writeU16(xptClient->sendBuffer, &sendError, numCompletedNonceRange);
+		// general info related to PoW
+		xptPacketbuffer_writeData(xptClient->sendBuffer, proofOfWork->prevBlockHash, 32, &sendError);
+		xptPacketbuffer_writeData(xptClient->sendBuffer, proofOfWork->merkleRoot, 32, &sendError);
+		xptPacketbuffer_writeU32(xptClient->sendBuffer, &sendError, proofOfWork->timestampStart);
+		xptPacketbuffer_writeU32(xptClient->sendBuffer, &sendError, proofOfWork->sieveSize);
+		xptPacketbuffer_writeU32(xptClient->sendBuffer, &sendError, proofOfWork->primesToSieve);
+		xptPacketbuffer_writeU32(xptClient->sendBuffer, &sendError, workData.proofOfWork[i].scannedRange[numCompletedNonceRange].nonceEnd);
+		for(uint32 f=0; f<numCompletedNonceRange+1; f++)
+		{
+			// todo: Find a way to compress this information
+			xptPacketbuffer_writeU32(xptClient->sendBuffer, &sendError, workData.proofOfWork[i].scannedRange[f].proofOfWork_chainLength);
+			xptPacketbuffer_writeU32(xptClient->sendBuffer, &sendError, workData.proofOfWork[i].scannedRange[f].proofOfWork_multiplier);
+			xptPacketbuffer_writeU32(xptClient->sendBuffer, &sendError, workData.proofOfWork[i].scannedRange[f].proofOfWork_nonce);
+			xptPacketbuffer_writeU8(xptClient->sendBuffer, &sendError, workData.proofOfWork[i].scannedRange[f].proofOfWork_depth);
+			xptPacketbuffer_writeU8(xptClient->sendBuffer, &sendError, workData.proofOfWork[i].scannedRange[f].proofOfWork_chainType);
+		}
+	}
+	// delete all processed PoW
+	for (std::vector<xpmProofOfWork_t>::iterator it = workData.proofOfWork.begin() ; it != workData.proofOfWork.end();)
+	{
+		if( it->finished )
+			it = workData.proofOfWork.erase(it);
+		else
+			it++;
+	}
+	// finalize packet
+	xptPacketbuffer_finalizeWritePacket(xptClient->sendBuffer);
+	// send to server
+	printf("PoW send: %d bytes\n", xptClient->sendBuffer->parserIndex);
+	send(xptClient->clientSocket, (const char*)(xptClient->sendBuffer->buffer), xptClient->sendBuffer->parserIndex, 0);
+
+	LeaveCriticalSection(&workData.cs);
+}
 
 /*
  * Pushes the found block data to the server for giving us the $$$
@@ -186,48 +379,49 @@ bool jhMiner_pushShare_primecoin(uint8 data[256], primecoinBlock_t* primecoinBlo
 {
 	if( workData.protocolMode == MINER_PROTOCOL_GETWORK )
 	{
-		// prepare buffer to send
-		fStr_buffer4kb_t fStrBuffer_parameter;
-		fStr_t* fStr_parameter = fStr_alloc(&fStrBuffer_parameter, FSTR_FORMAT_UTF8);
-		fStr_append(fStr_parameter, "[\""); // \"]
-		fStr_addHexString(fStr_parameter, data, 256);
-		fStr_appendFormatted(fStr_parameter, "\",\"");
-		fStr_addHexString(fStr_parameter, (uint8*)&primecoinBlock->serverData, 32);
-		fStr_append(fStr_parameter, "\"]");
-		// send request
-		sint32 rpcErrorCode = 0;
-		jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", fStr_parameter, &rpcErrorCode);
-		if( jsonReturnValue == NULL )
-		{
-			printf("PushWorkResult failed :(\n");
-			return false;
-		}
-		else
-		{
-			// rpc call worked, sooooo.. is the server happy with the result?
-			jsonObject_t* jsonReturnValueBool = jsonObject_getParameter(jsonReturnValue, "result");
-			if( jsonObject_isTrue(jsonReturnValueBool) )
-			{
-				total_shares++;
-				valid_shares++;
-				time_t now = time(0);
-				dt = ctime(&now);
-				//printf("Valid share found!");
-				//printf("[ %d / %d ] %s",valid_shares, total_shares,dt);
-				jsonObject_freeObject(jsonReturnValue);
-				return true;
-			}
-			else
-			{
-				total_shares++;
-				// the server says no to this share :(
-				printf("Server rejected share (BlockHeight: %d/%d nBits: 0x%08X)\n", primecoinBlock->serverData.blockHeight, jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex), primecoinBlock->serverData.client_shareBits);
-				jsonObject_freeObject(jsonReturnValue);
-				return false;
-			}
-		}
-		jsonObject_freeObject(jsonReturnValue);
-		return false;
+		// disabled
+		//// prepare buffer to send
+		//fStr_buffer4kb_t fStrBuffer_parameter;
+		//fStr_t* fStr_parameter = fStr_alloc(&fStrBuffer_parameter, FSTR_FORMAT_UTF8);
+		//fStr_append(fStr_parameter, "[\""); // \"]
+		//fStr_addHexString(fStr_parameter, data, 256);
+		//fStr_appendFormatted(fStr_parameter, "\",\"");
+		//fStr_addHexString(fStr_parameter, (uint8*)&primecoinBlock->serverData, 32);
+		//fStr_append(fStr_parameter, "\"]");
+		//// send request
+		//sint32 rpcErrorCode = 0;
+		//jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", fStr_parameter, &rpcErrorCode);
+		//if( jsonReturnValue == NULL )
+		//{
+		//	printf("PushWorkResult failed :(\n");
+		//	return false;
+		//}
+		//else
+		//{
+		//	// rpc call worked, sooooo.. is the server happy with the result?
+		//	jsonObject_t* jsonReturnValueBool = jsonObject_getParameter(jsonReturnValue, "result");
+		//	if( jsonObject_isTrue(jsonReturnValueBool) )
+		//	{
+		//		total_shares++;
+		//		valid_shares++;
+		//		time_t now = time(0);
+		//		dt = ctime(&now);
+		//		//printf("Valid share found!");
+		//		//printf("[ %d / %d ] %s",valid_shares, total_shares,dt);
+		//		jsonObject_freeObject(jsonReturnValue);
+		//		return true;
+		//	}
+		//	else
+		//	{
+		//		total_shares++;
+		//		// the server says no to this share :(
+		//		printf("Server rejected share (BlockHeight: %d/%d nBits: 0x%08X)\n", primecoinBlock->serverData.blockHeight, jhMiner_getCurrentWorkBlockHeight(primecoinBlock->threadIndex), primecoinBlock->serverData.client_shareBits);
+		//		jsonObject_freeObject(jsonReturnValue);
+		//		return false;
+		//	}
+		//}
+		//jsonObject_freeObject(jsonReturnValue);
+		//return false;
 	}
 	else if( workData.protocolMode == MINER_PROTOCOL_XPUSHTHROUGH )
 	{
@@ -244,7 +438,7 @@ bool jhMiner_pushShare_primecoin(uint8 data[256], primecoinBlock_t* primecoinBlo
 		CBigNum bnPrimeChainMultiplier;
 		bnPrimeChainMultiplier.SetHex(primecoinBlock->mpzPrimeChainMultiplier.get_str(16));
 		std::vector<unsigned char> bnSerializeData = bnPrimeChainMultiplier.getvch();
-		sint32 lengthBN = bnSerializeData.size();
+		sint32 lengthBN = (sint32)bnSerializeData.size();
 		memcpy(xptShareToSubmit->chainMultiplier, &bnSerializeData[0], lengthBN);
 		xptShareToSubmit->chainMultiplierSize = lengthBN;
 		// todo: Set stuff like sieve size
@@ -252,10 +446,10 @@ bool jhMiner_pushShare_primecoin(uint8 data[256], primecoinBlock_t* primecoinBlo
 			xptClient_foundShare(workData.xptClient, xptShareToSubmit);
 		else
 		{
-			printf("Share submission failed. The client is not connected to the pool.\n");
+			printf("Share submission failed. The client is not connected to the pool.");
 		}
-
 	}
+	return true;
 }
 
 int queryLocalPrimecoindBlockCount(bool useLocal)
@@ -336,57 +530,58 @@ static bool IsXptClientConnected()
 
 void jhMiner_queryWork_primecoin()
 {
-	sint32 rpcErrorCode = 0;
-	uint32 time1 = GetTickCount();
-	jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", NULL, &rpcErrorCode);
-	uint32 time2 = GetTickCount() - time1;
-	// printf("request time: %dms\n", time2);
-	if( jsonReturnValue == NULL )
-	{
-		printf("Getwork() failed with %serror code %d\n", (rpcErrorCode>1000)?"http ":"", rpcErrorCode>1000?rpcErrorCode-1000:rpcErrorCode);
-		workData.workEntry[0].dataIsValid = false;
-		return;
-	}
-	else
-	{
-		jsonObject_t* jsonResult = jsonObject_getParameter(jsonReturnValue, "result");
-		jsonObject_t* jsonResult_data = jsonObject_getParameter(jsonResult, "data");
-		//jsonObject_t* jsonResult_hash1 = jsonObject_getParameter(jsonResult, "hash1");
-		jsonObject_t* jsonResult_target = jsonObject_getParameter(jsonResult, "target");
-		jsonObject_t* jsonResult_serverData = jsonObject_getParameter(jsonResult, "serverData");
-		//jsonObject_t* jsonResult_algorithm = jsonObject_getParameter(jsonResult, "algorithm");
-		if( jsonResult_data == NULL )
-		{
-			printf("Error :(\n");
-			workData.workEntry[0].dataIsValid = false;
-			jsonObject_freeObject(jsonReturnValue);
-			return;
-		}
-		// data
-		uint32 stringData_length = 0;
-		uint8* stringData_data = jsonObject_getStringData(jsonResult_data, &stringData_length);
-		//printf("data: %.*s...\n", (sint32)min(48, stringData_length), stringData_data);
+	// disabled
+	//sint32 rpcErrorCode = 0;
+	//uint32 time1 = GetTickCount();
+	//jsonObject_t* jsonReturnValue = jsonClient_request(&jsonRequestTarget, "getwork", NULL, &rpcErrorCode);
+	//uint32 time2 = GetTickCount() - time1;
+	//// printf("request time: %dms\n", time2);
+	//if( jsonReturnValue == NULL )
+	//{
+	//	printf("Getwork() failed with %serror code %d\n", (rpcErrorCode>1000)?"http ":"", rpcErrorCode>1000?rpcErrorCode-1000:rpcErrorCode);
+	//	workData.workEntry[0].dataIsValid = false;
+	//	return;
+	//}
+	//else
+	//{
+	//	jsonObject_t* jsonResult = jsonObject_getParameter(jsonReturnValue, "result");
+	//	jsonObject_t* jsonResult_data = jsonObject_getParameter(jsonResult, "data");
+	//	//jsonObject_t* jsonResult_hash1 = jsonObject_getParameter(jsonResult, "hash1");
+	//	jsonObject_t* jsonResult_target = jsonObject_getParameter(jsonResult, "target");
+	//	jsonObject_t* jsonResult_serverData = jsonObject_getParameter(jsonResult, "serverData");
+	//	//jsonObject_t* jsonResult_algorithm = jsonObject_getParameter(jsonResult, "algorithm");
+	//	if( jsonResult_data == NULL )
+	//	{
+	//		printf("Error :(\n");
+	//		workData.workEntry[0].dataIsValid = false;
+	//		jsonObject_freeObject(jsonReturnValue);
+	//		return;
+	//	}
+	//	// data
+	//	uint32 stringData_length = 0;
+	//	uint8* stringData_data = jsonObject_getStringData(jsonResult_data, &stringData_length);
+	//	//printf("data: %.*s...\n", (sint32)min(48, stringData_length), stringData_data);
 
-		EnterCriticalSection(&workData.cs);
-		yPoolWorkMgr_parseHexString((char*)stringData_data, min(128*2, stringData_length), workData.workEntry[0].data);
-		workData.workEntry[0].dataIsValid = true;
-		// get server data
-		uint32 stringServerData_length = 0;
-		uint8* stringServerData_data = jsonObject_getStringData(jsonResult_serverData, &stringServerData_length);
-		RtlZeroMemory(workData.workEntry[0].serverData, 32);
-		if( jsonResult_serverData )
-			yPoolWorkMgr_parseHexString((char*)stringServerData_data, min(128*2, 32*2), workData.workEntry[0].serverData);
-		// generate work hash
-		uint32 workDataHash = 0x5B7C8AF4;
-		for(uint32 i=0; i<stringData_length/2; i++)
-		{
-			workDataHash = (workDataHash>>29)|(workDataHash<<3);
-			workDataHash += (uint32)workData.workEntry[0].data[i];
-		}
-		workData.workEntry[0].dataHash = workDataHash;
-		LeaveCriticalSection(&workData.cs);
-		jsonObject_freeObject(jsonReturnValue);
-	}
+	//	EnterCriticalSection(&workData.cs);
+	//	yPoolWorkMgr_parseHexString((char*)stringData_data, min(128*2, stringData_length), workData.workEntry[0].data);
+	//	workData.workEntry[0].dataIsValid = true;
+	//	// get server data
+	//	uint32 stringServerData_length = 0;
+	//	uint8* stringServerData_data = jsonObject_getStringData(jsonResult_serverData, &stringServerData_length);
+	//	RtlZeroMemory(workData.workEntry[0].serverData, 32);
+	//	if( jsonResult_serverData )
+	//		yPoolWorkMgr_parseHexString((char*)stringServerData_data, min(128*2, 32*2), workData.workEntry[0].serverData);
+	//	// generate work hash
+	//	uint32 workDataHash = 0x5B7C8AF4;
+	//	for(uint32 i=0; i<stringData_length/2; i++)
+	//	{
+	//		workDataHash = (workDataHash>>29)|(workDataHash<<3);
+	//		workDataHash += (uint32)workData.workEntry[0].data[i];
+	//	}
+	//	workData.workEntry[0].dataHash = workDataHash;
+	//	LeaveCriticalSection(&workData.cs);
+	//	jsonObject_freeObject(jsonReturnValue);
+	//}
 }
 
 /*
@@ -394,10 +589,21 @@ void jhMiner_queryWork_primecoin()
  */
 uint32 jhMiner_getCurrentWorkBlockHeight(sint32 threadIndex)
 {
-	if( workData.protocolMode == MINER_PROTOCOL_GETWORK )
-		return ((serverData_t*)workData.workEntry[0].serverData)->blockHeight;	
-	else
-		return ((serverData_t*)workData.workEntry[threadIndex].serverData)->blockHeight;
+	return workData.mostRecentBlockHeight;	
+}
+
+
+/*
+ * Called to initialize a mode (before worker threads are started)
+ */
+void jhMiner_initMode()
+{
+	//if( commandlineInput.mode == MINER_MODE_XPM_OPENCL )
+	//{
+	//	openCL_init();
+
+	//}
+	// other modes dont require special initialization
 }
 
 /*
@@ -405,36 +611,38 @@ uint32 jhMiner_getCurrentWorkBlockHeight(sint32 threadIndex)
  */
 int jhMiner_workerThread_getwork(int threadIndex)
 {
-	while( true )
-	{
-		uint8 localBlockData[128];
-		// copy block data from global workData
-		uint32 workDataHash = 0;
-		uint8 serverData[32];
-		while( workData.workEntry[0].dataIsValid == false ) Sleep(200);
-		EnterCriticalSection(&workData.cs);
-		memcpy(localBlockData, workData.workEntry[0].data, 128);
-		//seed = workData.seed;
-		memcpy(serverData, workData.workEntry[0].serverData, 32);
-		LeaveCriticalSection(&workData.cs);
-		// swap endianess
-		for(uint32 i=0; i<128/4; i++)
-		{
-			*(uint32*)(localBlockData+i*4) = _swapEndianessU32(*(uint32*)(localBlockData+i*4));
-		}
-		// convert raw data into primecoin block
-		primecoinBlock_t primecoinBlock = {0};
-		memcpy(&primecoinBlock, localBlockData, 80);
-		// we abuse the timestamp field to generate an unique hash for each worker thread...
-		primecoinBlock.timestamp += threadIndex;
-		primecoinBlock.threadIndex = threadIndex;
-		primecoinBlock.xptMode = (workData.protocolMode == MINER_PROTOCOL_XPUSHTHROUGH);
-		// ypool uses a special encrypted serverData value to speedup identification of merkleroot and share data
-		memcpy(&primecoinBlock.serverData, serverData, 32);
-		// start mining
-		BitcoinMiner(&primecoinBlock, threadIndex);
-		primecoinBlock.mpzPrimeChainMultiplier = 0;
-	}
+	// disabled
+	//mallocSpeedupInitPerThread();
+	//while( true )
+	//{
+	//	uint8 localBlockData[128];
+	//	// copy block data from global workData
+	//	uint32 workDataHash = 0;
+	//	uint8 serverData[32];
+	//	while( workData.workEntry[0].dataIsValid == false ) Sleep(200);
+	//	EnterCriticalSection(&workData.cs);
+	//	memcpy(localBlockData, workData.workEntry[0].data, 128);
+	//	//seed = workData.seed;
+	//	memcpy(serverData, workData.workEntry[0].serverData, 32);
+	//	LeaveCriticalSection(&workData.cs);
+	//	// swap endianess
+	//	for(uint32 i=0; i<128/4; i++)
+	//	{
+	//		*(uint32*)(localBlockData+i*4) = _swapEndianessU32(*(uint32*)(localBlockData+i*4));
+	//	}
+	//	// convert raw data into primecoin block
+	//	primecoinBlock_t primecoinBlock = {0};
+	//	memcpy(&primecoinBlock, localBlockData, 80);
+	//	// we abuse the timestamp field to generate an unique hash for each worker thread...
+	//	primecoinBlock.timestamp += threadIndex;
+	//	primecoinBlock.threadIndex = threadIndex;
+	//	primecoinBlock.xptMode = (workData.protocolMode == MINER_PROTOCOL_XPUSHTHROUGH);
+	//	// ypool uses a special encrypted serverData value to speedup identification of merkleroot and share data
+	//	memcpy(&primecoinBlock.serverData, serverData, 32);
+	//	// start mining
+	//	BitcoinMiner_modeSwitch(&primecoinBlock, threadIndex);
+	//	primecoinBlock.mpzPrimeChainMultiplier = 0;
+	//}
 	return 0;
 }
 
@@ -443,56 +651,70 @@ int jhMiner_workerThread_getwork(int threadIndex)
  */
 int jhMiner_workerThread_xpt(int threadIndex)
 {
+	mallocSpeedupInitPerThread();
 	while( true )
 	{
-		uint8 localBlockData[128];
+		//uint8 localBlockData[128];
+		// init primecoin block
+		primecoinBlock_t primecoinBlock = {0};
+		//memcpy(&primecoinBlock, localBlockData, 80);
 		// copy block data from global workData
 		uint32 workDataHash = 0;
-		uint8 serverData[32];
-		while( workData.workEntry[threadIndex].dataIsValid == false ) Sleep(50);
+		while( true )
+		{
+			Sleep(50);
 		EnterCriticalSection(&workData.cs);
-		memcpy(localBlockData, workData.workEntry[threadIndex].data, 128);
-		memcpy(serverData, workData.workEntry[threadIndex].serverData, 32);
-		workDataHash = workData.workEntry[threadIndex].dataHash;
+			if( workData.workEntrySize > 0 )
+				break;
 		LeaveCriticalSection(&workData.cs);
-		// convert raw data into primecoin block
-		primecoinBlock_t primecoinBlock = {0};
-		memcpy(&primecoinBlock, localBlockData, 80);
-		// we abuse the timestamp field to generate an unique hash for each worker thread...
-		primecoinBlock.timestamp += threadIndex;
+		}
+		//memcpy(localBlockData, workData.workEntry[threadIndex].data, 128);
+		//memcpy(serverData, workData.workEntry[threadIndex].serverData, 32);
+		//memcpy(&primecoinBlock.serverData, serverData, 32);
+		//workDataHash = workData.workEntry[threadIndex].dataHash;
+		//
+
+		
+		//memcpy(workData.workEntryQueue+workData.workEntrySize, workData.xptClient->blockWorkInfo);
+		
+		// do not process the top element (as it is the most recent one) but instead pick a random one
+		uint32 rdProcessIdx = (rand()%workData.workEntrySize);
+		workData.workEntrySize--; // remove top element
+		xptBlockWorkInfo_t* blockInputData = &workData.workEntryQueue[rdProcessIdx];//workData.workEntrySize;
+		primecoinBlock.blockHeight = blockInputData->height;
+		primecoinBlock.nBits = blockInputData->nBits;
+		primecoinBlock.nBitsForShare = blockInputData->nBitsShare;
+		primecoinBlock.version = blockInputData->version;
+		primecoinBlock.timestamp = blockInputData->nTime;
+		memcpy(primecoinBlock.merkleRoot, blockInputData->merkleRoot, 32);
+		memcpy(primecoinBlock.prevBlockHash, blockInputData->prevBlockHash, 32);
+
+		primecoinBlock.fixedPrimorial = blockInputData->fixedPrimorial;
+		primecoinBlock.fixedHashFactor = blockInputData->fixedHashFactor;
+		primecoinBlock.sievesizeMin = blockInputData->sievesizeMin;
+		primecoinBlock.sievesizeMax = blockInputData->sievesizeMax;
+		primecoinBlock.primesToSieveMin = blockInputData->primesToSieveMin;
+		primecoinBlock.primesToSieveMax = blockInputData->primesToSieveMax;
+		primecoinBlock.sieveChainLength = blockInputData->sieveChainLength;
+		primecoinBlock.nonceMin = blockInputData->nonceMin;
+		primecoinBlock.nonceMax = blockInputData->nonceMax;
+		primecoinBlock.xptFlags = blockInputData->flags;
+
+		// shift old top work element to new empty location
+		if( workData.workEntrySize > 0 )
+			memcpy(blockInputData, &workData.workEntryQueue[workData.workEntrySize], sizeof(xptBlockWorkInfo_t));
+
+		LeaveCriticalSection(&workData.cs);
+		// local data for the block
 		primecoinBlock.threadIndex = threadIndex;
 		primecoinBlock.xptMode = (workData.protocolMode == MINER_PROTOCOL_XPUSHTHROUGH);
-		// ypool uses a special encrypted serverData value to speedup identification of merkleroot and share data
-		memcpy(&primecoinBlock.serverData, serverData, 32);
 		// start mining
-		//uint32 time1 = GetTickCount();
 		if (!BitcoinMiner(&primecoinBlock, threadIndex))
 			return 0;
-		//printf("Mining stopped after %dms\n", GetTickCount()-time1);
 		primecoinBlock.mpzPrimeChainMultiplier = 0;
 	}
 	return 0;
 }
-
-typedef struct  
-{
-	char* workername;
-	char* workerpass;
-	char* host;
-	sint32 port;
-	sint32 numThreads;
-	sint32 sieveSize;
-	sint32 sievePercentage;
-	sint32 roundSievePercentage;
-	sint32 sievePrimeLimit;	// how many primes should be sieved
-	unsigned int L1CacheElements;
-	unsigned int primorialMultiplier;
-	bool enableCacheTunning;
-	sint32 target;
-	sint32 sieveExtensions;
-}commandlineInput_t;
-
-commandlineInput_t commandlineInput = {0};
 
 void jhMiner_printHelp()
 {
@@ -730,18 +952,18 @@ void jhMiner_parseCommandline(int argc, char **argv)
 		else if( memcmp(argument, "-help", 6)==0 || memcmp(argument, "--help", 7)==0 )
 		{
 			jhMiner_printHelp();
-			ExitProcess(0);
+			exit(0);
 		}
 		else
 		{
 			printf("'%s' is an unknown option.\nType jhPrimeminer.exe --help for more info\n", argument); 
-			ExitProcess(-1);
+			exit(-1);
 		}
 	}
 	if( argc <= 1 )
 	{
 		jhMiner_printHelp();
-		ExitProcess(0);
+		exit(0);
 	}
 }
 
@@ -750,6 +972,7 @@ void jhMiner_parseCommandline(int argc, char **argv)
  */
 int jhMiner_main_getworkMode()
 {
+	jhMiner_initMode();
 	// start threads
 	for(sint32 threadIdx=0; threadIdx<commandlineInput.numThreads; threadIdx++)
 		CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)jhMiner_workerThread_getwork, (LPVOID)threadIdx, 0, 0);
@@ -771,7 +994,7 @@ int jhMiner_main_getworkMode()
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
 			primeStats.bestPrimeChainDifficulty = 0;
 			double primeDifficulty = (double)bestDifficulty / (double)0x1000000;
-			if( workData.workEntry[0].dataIsValid )
+			if( workData.workEntrySize > 0 )
 			{
 				primeStats.bestPrimeChainDifficultySinceLaunch = max(primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
 				printf("primes/s: %d best difficulty: %f record: %f\n", (sint32)primesPerSecond, (float)primeDifficulty, (float)primeStats.bestPrimeChainDifficultySinceLaunch);
@@ -800,25 +1023,25 @@ void MultiplierAutoAdjust()
 	//printf("\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
 
 	//bool fIncrementPrimorial = true;
-	if (primeStats.nChainHit == 0)
-		return;
+	//if (primeStats.nChainHit == 0)
+	//	return;
 
-	if ( primeStats.nChainHit < primeStats.nPrevChainHit)
-		fIncrementPrimorial = !fIncrementPrimorial;
+	//if ( primeStats.nChainHit < primeStats.nPrevChainHit)
+	//	fIncrementPrimorial = !fIncrementPrimorial;
 
-	primeStats.nPrevChainHit = primeStats.nChainHit;
-	primeStats.nChainHit = 0;
-	// Primecoin: dynamic adjustment of primorial multiplier
-	if (fIncrementPrimorial)
-	{
-		if (!PrimeTableGetNextPrime((unsigned int)  primeStats.nPrimorialMultiplier))
-			error("PrimecoinMiner() : primorial increment overflow");
-	}
-	else if (primeStats.nPrimorialMultiplier > 7)
-	{
-		if (!PrimeTableGetPreviousPrime((unsigned int) primeStats.nPrimorialMultiplier))
-			error("PrimecoinMiner() : primorial decrement overflow");
-	}
+	//primeStats.nPrevChainHit = primeStats.nChainHit;
+	//primeStats.nChainHit = 0;
+	//// Primecoin: dynamic adjustment of primorial multiplier
+	//if (fIncrementPrimorial)
+	//{
+	//	if (!PrimeTableGetNextPrime((unsigned int)  primeStats.nPrimorialMultiplier))
+	//		error("PrimecoinMiner() : primorial increment overflow");
+	//}
+	//else if (primeStats.nPrimorialMultiplier > 7)
+	//{
+	//	if (!PrimeTableGetPreviousPrime((unsigned int) primeStats.nPrimorialMultiplier))
+	//		error("PrimecoinMiner() : primorial decrement overflow");
+	//}
 }
 
 BYTE nRoundSievePercentage;
@@ -928,18 +1151,18 @@ static void RoundSieveAutoTuningWorkerThread(bool bEnabled)
 
 			if (ratio > nRoundSievePercentage + 5)
 			{
-				if (!PrimeTableGetNextPrime((unsigned int)  primeStats.nPrimorialMultiplier))
+				if (!PrimeTableGetNextPrime( minerSettings.nPrimorialMultiplier))
 					error("PrimecoinMiner() : primorial increment overflow");
-				printf( "Sieve/Test ratio: %.01f / %.01f %%  - New PrimorialMultiplier: %u\n", ratio, 100.0 - ratio,  primeStats.nPrimorialMultiplier);
+				printf( "Sieve/Test ratio: %.01f / %.01f %%  - New PrimorialMultiplier: %u\n", ratio, 100.0 - ratio,  minerSettings.nPrimorialMultiplier);
 			} else 
 				if (ratio < nRoundSievePercentage - 5)
 				{
-					if ( primeStats.nPrimorialMultiplier > 2)
+					if ( minerSettings.nPrimorialMultiplier > 2)
 					{
-						if (!PrimeTableGetPreviousPrime((unsigned int) primeStats.nPrimorialMultiplier))
+						if (!PrimeTableGetPreviousPrime( minerSettings.nPrimorialMultiplier))
 							error("PrimecoinMiner() : primorial decrement overflow");
 					}
-					printf( "Sieve/Test ratio: %.01f / %.01f %%  - New PrimorialMultiplier: %u\n", ratio, 100.0 - ratio,  primeStats.nPrimorialMultiplier);
+					printf( "Sieve/Test ratio: %.01f / %.01f %%  - New PrimorialMultiplier: %u\n", ratio, 100.0 - ratio,  minerSettings.nPrimorialMultiplier);
 				}
 		}
 	}
@@ -968,7 +1191,7 @@ void PrintCurrentSettings()
 	printf("Sieve Percentage (-d): %u\n", nSievePercentage);
 	printf("Round Sieve Percentage (-r): %u\n", nRoundSievePercentage);
 	printf("Prime Limit (-primes): %u\n", commandlineInput.sievePrimeLimit);
-	printf("Primorial Multiplier (-m): %u\n", primeStats.nPrimorialMultiplier);
+	printf("Primorial Multiplier (-m): %u\n", minerSettings.nPrimorialMultiplier);
 	printf("L1CacheElements (-c): %u\n", primeStats.nL1CacheElements);	
 	printf("Chain Length Target (-target): %u\n", nTarget);	
 	printf("Sieve Extensions (-se): %u\n", nSieveExtensions);	
@@ -995,14 +1218,14 @@ static void input_thread()
 			return;
 			break;
 		case '[':
-			if (!PrimeTableGetPreviousPrime((unsigned int) primeStats.nPrimorialMultiplier))
+			if (!PrimeTableGetPreviousPrime((unsigned int) minerSettings.nPrimorialMultiplier))
 				error("PrimecoinMiner() : primorial decrement overflow");	
-			printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
+			printf("Primorial Multiplier: %u\n", minerSettings.nPrimorialMultiplier);
 			break;
 		case ']':
-			if (!PrimeTableGetNextPrime((unsigned int)  primeStats.nPrimorialMultiplier))
+			if (!PrimeTableGetNextPrime((unsigned int)  minerSettings.nPrimorialMultiplier))
 				error("PrimecoinMiner() : primorial increment overflow");
-			printf("Primorial Multiplier: %u\n", primeStats.nPrimorialMultiplier);
+			printf("Primorial Multiplier: %u\n", minerSettings.nPrimorialMultiplier);
 			break;
 		case 'p': case 'P':
 			bEnablenPrimorialMultiplierTuning = !bEnablenPrimorialMultiplierTuning;
@@ -1121,9 +1344,10 @@ static void watchdog_thread(std::map<DWORD, HANDLE> threadMap)
  */
 int jhMiner_main_xptMode()
 {
+	jhMiner_initMode();
 	// start the Auto Tuning thread
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)CacheAutoTuningWorkerThread, (LPVOID)commandlineInput.enableCacheTunning, 0, 0);
-	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoundSieveAutoTuningWorkerThread, NULL, 0, 0);
+	//CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)RoundSieveAutoTuningWorkerThread, NULL, 0, 0);
 	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)input_thread, NULL, 0, 0);
 
 
@@ -1138,13 +1362,13 @@ int jhMiner_main_xptMode()
 		threadHearthBeat[threadIdx] = GetTickCount();
 	}
 	
-	CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)watchdog_thread, (LPVOID)&threadMap, 0, 0);
+	//CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)watchdog_thread, (LPVOID)&threadMap, 0, 0);
 
 
 	// main thread, don't query work, just wait and process
 	sint32 loopCounter = 0;
-	uint32 xptWorkIdentifier = 0xFFFFFFFF;
 	uint32 time_multiAdjust = GetTickCount();
+	uint32 time_powSend = GetTickCount();
 	unsigned long lastFiveChainCount = 0;
 	unsigned long lastFourChainCount = 0;
 	while( true )
@@ -1153,12 +1377,15 @@ int jhMiner_main_xptMode()
 			return 0;
 
 		// calculate stats every second tick
-		if( loopCounter % 5 == 0)
+		if( loopCounter % 2 == 0)
 		{
 			double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
 			double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
 			if( statsPassedTime < 1.0 )
 				statsPassedTime = 1.0; // avoid division by zero
+			
+			double numbersTestedPerSec = (double)primeStats.numAllTestedNumbers / totalRunTime;
+			//numbersTestedPerSec *= 0.0001;
 			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
 			primeStats.primeLastUpdate = GetTickCount();
 			float avgCandidatesPerRound = (double)primeStats.nCandidateCount / primeStats.nSieveRounds;
@@ -1170,7 +1397,7 @@ int jhMiner_main_xptMode()
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
 			primeStats.bestPrimeChainDifficulty = 0;
 			float primeDifficulty = GetChainDifficulty(bestDifficulty);
-			if( workData.workEntry[0].dataIsValid )
+			if( workData.xptClient != NULL ) // dont print info when disconnected
 			{
 				primeStats.bestPrimeChainDifficultySinceLaunch = max(primeStats.bestPrimeChainDifficultySinceLaunch, primeDifficulty);
 				//double sharesPerHour = ((double)valid_shares / totalRunTime) * 3600000.0;
@@ -1186,7 +1413,7 @@ int jhMiner_main_xptMode()
 				}
 				//printf(" - Last 4ch/h: %.02f - Last 5ch/h: %.02f\n", fourSharePerPeriod, fiveSharePerPeriod);
 				//printf(" - Best: %.04f - Max: %.04f\n", primeDifficulty, primeStats.bestPrimeChainDifficultySinceLaunch);
-				printf(" - SPS:%.03f - ACC:%d\n", sievesPerSecond, (sint32)avgCandidatesPerRound);
+				printf(" - SPS:%.03f - ACC:%d - Num/s: %dk\n", sievesPerSecond, (sint32)avgCandidatesPerRound, (sint32)numbersTestedPerSec);
 				//printf("\n");
 			}
 		}
@@ -1204,11 +1431,11 @@ int jhMiner_main_xptMode()
 				time_multiAdjust = GetTickCount();
 			}
 
-			//if(tickCount - time_AvarageCalc >= 5*60*1000)
-			//{
-			//	//calculate 5 minute avarages
-			//}
-
+			if( tickCount - time_powSend >= (70*1000) )
+			{
+				jhMiner_primecoinSendProofOfWork();
+				time_powSend = GetTickCount() - (rand()%2)*1000; // make sure not every miner sends at the same time
+			}
 			if( passedTime >= 4000 )
 				break;
 			xptClient_process(workData.xptClient);
@@ -1216,15 +1443,14 @@ int jhMiner_main_xptMode()
 			if( workData.xptClient == NULL || xptClient_isDisconnected(workData.xptClient, &disconnectReason) )
 			{
 				// disconnected, mark all data entries as invalid
-				for(uint32 i=0; i<128; i++)
-					workData.workEntry[i].dataIsValid = false;
-				printf("xpt: Disconnected, auto reconnect in 30 seconds\n");
+				workData.workEntrySize = 0;
+				workData.mostRecentBlockHeight = 0;
+				printf("xpt: Disconnected, auto reconnect in 45 seconds\n");
 				if( workData.xptClient && disconnectReason )
 					printf("xpt: Disconnect reason: %s\n", disconnectReason);
-				Sleep(30*1000);
+				Sleep(45*1000);
 				if( workData.xptClient )
 					xptClient_free(workData.xptClient);
-				xptWorkIdentifier = 0xFFFFFFFF;
 				while( true )
 				{
 					workData.xptClient = xptClient_connect(&jsonRequestTarget, commandlineInput.numThreads);
@@ -1232,53 +1458,52 @@ int jhMiner_main_xptMode()
 						break;
 				}
 			}
-			// has the block data changed?
-			if( workData.xptClient && xptWorkIdentifier != workData.xptClient->workDataCounter )
+			// new block data in the queue
+			if( workData.xptClient && workData.xptClient->blockWorkSize > 0 )
 			{
-				// printf("New work\n");
-				xptWorkIdentifier = workData.xptClient->workDataCounter;
-				for(uint32 i=0; i<workData.xptClient->payloadNum; i++)
+				EnterCriticalSection(&workData.cs);
+				EnterCriticalSection(&workData.xptClient->cs_workAccess);
+				for(uint32 i=0; i<workData.xptClient->blockWorkSize; i++)
 				{
-					uint8 blockData[256];
-					memset(blockData, 0x00, sizeof(blockData));
-					*(uint32*)(blockData+0) = workData.xptClient->blockWorkInfo.version;
-					memcpy(blockData+4, workData.xptClient->blockWorkInfo.prevBlock, 32);
-					memcpy(blockData+36, workData.xptClient->workData[i].merkleRoot, 32);
-					*(uint32*)(blockData+68) = workData.xptClient->blockWorkInfo.nTime;
-					*(uint32*)(blockData+72) = workData.xptClient->blockWorkInfo.nBits;
-					*(uint32*)(blockData+76) = 0; // nonce
-					memcpy(workData.workEntry[i].data, blockData, 80);
-					((serverData_t*)workData.workEntry[i].serverData)->blockHeight = workData.xptClient->blockWorkInfo.height;
-					((serverData_t*)workData.workEntry[i].serverData)->nBitsForShare = workData.xptClient->blockWorkInfo.nBitsShare;
-
-					// is the data really valid?
-					if( workData.xptClient->blockWorkInfo.nTime > 0 )
-						workData.workEntry[i].dataIsValid = true;
-					else
-						workData.workEntry[i].dataIsValid = false;
+					// create copy of the block
+					memcpy(&workData.workEntryQueue[workData.workEntrySize], (workData.xptClient->blockWorkInfo+i), sizeof(xptBlockWorkInfo_t));
+					workData.workEntrySize++;
+					workData.mostRecentBlockHeight = max(workData.mostRecentBlockHeight, workData.workEntryQueue[workData.workEntrySize-1].height);
 				}
-				if (workData.xptClient->blockWorkInfo.height > 0)
+				workData.xptClient->blockWorkSize = 0;
+				float earnedShareValue = workData.xptClient->earnedShareValue;
+				workData.xptClient->earnedShareValue = 0.0;
+				primeStats.fShareValue += earnedShareValue;
+				LeaveCriticalSection(&workData.xptClient->cs_workAccess);
+				
+				// print some block stats (of most recent received block data)
+				double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
+				double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
+				double poolDiff = GetPrimeDifficulty( workData.workEntryQueue[workData.workEntrySize-1].nBitsShare);
+				double blockDiff = GetPrimeDifficulty( workData.workEntryQueue[workData.workEntrySize-1].nBits);
+				unsigned long blockHeight = workData.workEntryQueue[workData.workEntrySize-1].height;
+				printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
+				printf("---- New Block: %u - Diff: %.06f / %.06f\n", blockHeight, blockDiff, poolDiff);
+				printf("---- Total/Valid shares: [ %d / %d ]  -  Max diff: %.05f\n",valid_shares, total_shares, primeStats.bestPrimeChainDifficultySinceLaunch);
+				for (int i = 6; i <= 10; i++)
 				{
-					double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
-					double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
-					double poolDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBitsShare);
-					double blockDiff = GetPrimeDifficulty( workData.xptClient->blockWorkInfo.nBits);
-					printf("\n\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
-					printf("---- New Block: %u - Diff: %.06f / %.06f\n", workData.xptClient->blockWorkInfo.height, blockDiff, poolDiff);
-					printf("---- Total/Valid shares: [ %d / %d ]  -  Max diff: %.05f\n",valid_shares, total_shares, primeStats.bestPrimeChainDifficultySinceLaunch);
-					for (int i = 6; i <= 10; i++)
-					{
-						double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0;
-						printf("---- %2d-chain count: %4u - %2dch/h: %7.03f - Share Value: %00.03f\n", 
-							i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
-					}
-					//printf("---- Share Value for the last block: %.06f\n", primeStats.fBlockShareValue);
-					printf("---- Total Share Value submitted to the pool: %.06f\n", primeStats.fTotalSubmittedShareValue);
-
-					printf("\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
-					primeStats.fBlockShareValue = 0;
-						multiplierSet.clear();
+					double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0;
+					printf("---- %2d-chain count: %4u - %2dch/h: %7.03f - Share Value: %00.03f\n", 
+						i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
 				}
+				//printf("---- Share Value for the last block: %.06f\n", primeStats.fBlockShareValue);
+				printf("---- Total Share Value submitted to the pool: %.06f\n", primeStats.fTotalSubmittedShareValue);
+				printf("---- Server PrimorialMultiplier: %u\n", workData.workEntryQueue[workData.workEntrySize-1].fixedPrimorial);
+				printf("---- Server PrimorialHashFactor: %u\n", workData.workEntryQueue[workData.workEntrySize-1].fixedHashFactor);
+				printf("---- Allowed Sieverange: %u - %u\n", workData.workEntryQueue[workData.workEntrySize-1].sievesizeMin, workData.workEntryQueue[workData.workEntrySize-1].sievesizeMax);
+				printf("---- Allowed Primetestrange: %u - %u\n", workData.workEntryQueue[workData.workEntrySize-1].primesToSieveMin, workData.workEntryQueue[workData.workEntrySize-1].primesToSieveMax);
+				printf("---- Allowed Noncerange: %u - %u\n", workData.workEntryQueue[workData.workEntrySize-1].nonceMin, workData.workEntryQueue[workData.workEntrySize-1].nonceMax);
+				printf("---- SieveChainLength: %u\n", workData.workEntryQueue[workData.workEntrySize-1].sieveChainLength);
+				printf("---- New share value earned: %f\n", earnedShareValue);
+				printf("\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\n");
+				primeStats.fBlockShareValue = 0;
+				multiplierSet.clear();
+				LeaveCriticalSection(&workData.cs);			
 			}
 			Sleep(10);
 		}
@@ -1296,7 +1521,8 @@ int main(int argc, char **argv)
 	GetSystemInfo( &sysinfo );
 	commandlineInput.numThreads = sysinfo.dwNumberOfProcessors;
 	commandlineInput.numThreads = max(commandlineInput.numThreads, 1);
-	commandlineInput.sieveSize = 1024000; // default maxSieveSize
+	commandlineInput.mode = MINER_MODE_XPM_DEFAULT;
+	commandlineInput.sieveSize = DEFAULT_SIEVE_SIZE; // default maxSieveSize
 	commandlineInput.sievePercentage = 10; // default 
 	commandlineInput.roundSievePercentage = 70; // default 
 	commandlineInput.enableCacheTunning = false;
@@ -1304,13 +1530,16 @@ int main(int argc, char **argv)
 	commandlineInput.primorialMultiplier = 0; // for default 0 we will swithc aouto tune on
 	commandlineInput.target = 0;
 	commandlineInput.sieveExtensions = 7;
+	commandlineInput.sievePrimeLimit = DEFAULT_PRIMES_TO_SIEVE; // default 
 
-	commandlineInput.sievePrimeLimit = 0;
 	// parse command lines
 	jhMiner_parseCommandline(argc, argv);
 	// Sets max sieve size
-	nMaxSieveSize = commandlineInput.sieveSize;
+	nMaxSieveSize = commandlineInput.sieveSize;	
 	nSievePercentage = commandlineInput.sievePercentage;
+	minerSettings.nPrimesToSieve = commandlineInput.sievePrimeLimit;
+	minerSettings.nSieveSize = commandlineInput.sieveSize;
+	minerSettings.sievePercentage = commandlineInput.sievePrimeLimit * 100 / commandlineInput.sieveSize;
 	nRoundSievePercentage = commandlineInput.roundSievePercentage;
 	nTarget = commandlineInput.target;
 	nSieveExtensions = commandlineInput.sieveExtensions;
@@ -1320,19 +1549,19 @@ int main(int argc, char **argv)
 
 	if(commandlineInput.primorialMultiplier == 0)
 	{
-		primeStats.nPrimorialMultiplier = 37;
+		minerSettings.nPrimorialMultiplier = 37;
 		bEnablenPrimorialMultiplierTuning = true;
 	}
 	else
 	{
-		primeStats.nPrimorialMultiplier = commandlineInput.primorialMultiplier;
+		minerSettings.nPrimorialMultiplier = commandlineInput.primorialMultiplier;
 		bEnablenPrimorialMultiplierTuning = false;
 	}
 
 	if( commandlineInput.host == NULL )
 	{
 		printf("Missing -o option\n");
-		ExitProcess(-1);	
+		exit(-1);
 	}
 
 	//CRYPTO_set_mem_ex_functions(mallocEx, reallocEx, freeEx);
@@ -1346,6 +1575,10 @@ int main(int argc, char **argv)
 	printf("\xBA  Credits: mikaelh for the performance optimizations           \xBA\n");
 	printf("\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC\n");
 	printf("Launching miner...\n");
+	if( commandlineInput.mode == MINER_MODE_XPM_MULTIPASSSIEVE )
+		printf("Notice:\n   This release contains an experimental algorithm that can cause repeated\n   share submissions. Dont worry if you receive a few rejected shares in a row.\n");
+	//mallocSpeedupInit();
+	//mallocSpeedupInitPerThread();
 	// set priority lower so the user still can do other things
 	SetPriorityClass(GetCurrentProcess(), BELOW_NORMAL_PRIORITY_CLASS);
 	// init memory speedup (if not already done in preMain)
@@ -1365,7 +1598,7 @@ int main(int argc, char **argv)
 	if( hostInfo == NULL )
 	{
 		printf("Cannot resolve '%s'. Is it a valid URL?\n", commandlineInput.host);
-		ExitProcess(-1);
+		exit(-1);
 	}
 	void** ipListPtr = (void**)hostInfo->h_addr_list;
 	uint32 ip = 0xFFFFFFFF;
@@ -1404,13 +1637,15 @@ int main(int argc, char **argv)
 	primeStats.fShareValue = 0;
 	primeStats.fBlockShareValue = 0;
 	primeStats.fTotalSubmittedShareValue = 0;
-	primeStats.nPrimorialMultiplier = 61;
+	minerSettings.nPrimorialMultiplier = 61;
 	primeStats.nWaveTime = 0;
 	primeStats.nWaveRound = 0;
 	//primeStats.nL1CacheElements = 256000;
 
 	// setup thread count and print info
 	printf("Using %d threads\n", commandlineInput.numThreads);
+	printf("Sieve size: %d\n", minerSettings.nSieveSize);
+	printf("Primes: %d\n", minerSettings.nPrimesToSieve);
 	printf("Username: %s\n", jsonRequestTarget.authUser);
 	printf("Password: %s\n", jsonRequestTarget.authPass);
 	// decide protocol

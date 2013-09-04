@@ -40,7 +40,19 @@ int BN2_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 #include "mpirxx.h"
 #include "mpir.h"
-#include<stdint.h>
+
+//#include<stdint.h> - not present in vs2008 install, instead we have the types below:
+typedef signed char int8_t;
+typedef short int int16_t;
+typedef int int32_t;
+typedef __int64 int64_t;
+
+typedef unsigned char uint8_t;
+typedef unsigned short int uint16_t;
+typedef unsigned int uint32_t;
+typedef unsigned __int64 uint64_t;
+
+
 #include"xptServer.h"
 #include"xptClient.h"
 
@@ -137,7 +149,7 @@ typedef struct
 	/* +0x14 */ uint32 client_shareBits; // difficulty score of found share (the client is allowed to modify this value, but not the others)
 	/* +0x18 */ uint32 serverStuff1;
 	/* +0x1C */ uint32 serverStuff2;
-}serverData_t;
+}getwork_serverData_t;
 
 typedef struct  
 {
@@ -154,7 +166,7 @@ typedef struct
 
 	volatile float nChainHit;
 	volatile float nPrevChainHit;
-	volatile unsigned int nPrimorialMultiplier;
+	//volatile unsigned int nPrimorialMultiplier;
 	
 	volatile float nSieveRounds;
 	volatile float nCandidateCount;
@@ -171,6 +183,10 @@ typedef struct
 	bool shareFound;
 	bool shareRejected;
 	volatile unsigned int nL1CacheElements;
+	// start for auto tuning
+	volatile uint32 numTestedCandidates;
+	volatile uint32 numPrimeCandidates;
+	volatile uint64 numAllTestedNumbers; // count of all tested numbers (including numbers that did not pass the sieve)
 
 }primeStats_t;
 
@@ -189,12 +205,35 @@ typedef struct
 	CBigNum bnPrimeChainMultiplierBN;
 	mpz_class mpzPrimeChainMultiplier;
 	// other
-	serverData_t serverData;
+	uint32 nBitsForShare;
+	uint32 blockHeight;
 	uint32 threadIndex; // the index of the miner thread
 	bool xptMode;
+	// server constraints
+	uint32 fixedPrimorial; // 59 is recommended
+	uint32 fixedHashFactor; // if 0 -> block header hash must be prime
+	uint32 sievesizeMin;
+	uint32 sievesizeMax;
+	uint32 primesToSieveMin;
+	uint32 primesToSieveMax;
+	uint32 sieveChainLength; // the chainlength we have to sieve for, usually equal to integer part of network difficulty
+	uint32 nonceMin;
+	uint32 nonceMax;
+	// flags
+	uint32 xptFlags;
 }primecoinBlock_t;
 
 extern jsonRequestTarget_t jsonRequestTarget; // rpc login data
+
+typedef struct  
+{
+	sint32 nSieveSize;
+	sint32 nPrimesToSieve;
+	sint32 sievePercentage;
+	unsigned int nPrimorialMultiplier;
+}minerSettings_t;
+
+extern minerSettings_t minerSettings;
 
 // prototypes from main.cpp
 bool error(const char *format, ...);
@@ -204,6 +243,8 @@ uint32 _swapEndianessU32(uint32 v);
 uint32 jhMiner_getCurrentWorkBlockHeight(sint32 threadIndex);
 
 bool BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex);
+void BitcoinMiner_multipassSieve(primecoinBlock_t* primecoinBlock, sint32 threadIndex);
+void BitcoinMiner_openCL(primecoinBlock_t* primecoinBlock, sint32 threadIndex);
 
 // direct access to share counters
 extern volatile int total_shares;
@@ -224,3 +265,12 @@ static inline uint32_t le32dec(const void *pp)
 	    ((uint32_t)(p[2]) << 16) + ((uint32_t)(p[3]) << 24));
 }
 #endif
+
+void mallocSpeedupInit();
+void mallocSpeedupInitPerThread();
+
+// methods for collection of proof of work
+void jhMiner_primecoinBeginProofOfWork(uint8 merkleRoot[32], uint8 prevBlockHash[32], uint32 sieveSize, uint32 primesToSieve, uint32 timestampStart);
+void jhMiner_primecoinAddProofOfWork(uint8 merkleRoot[32], uint8 prevBlockHash[32], uint32 numberOfProcessedSieves, uint32 timestamp, uint32 proofChainLength, uint8 proofChainType, uint32 proofNonce, uint32 proofMultiplier, uint32 proofDepth);
+void jhMiner_primecoinCompleteProofOfWork(uint8 merkleRoot[32], uint8 prevBlockHash[32], uint32 nonceEnd, uint32 numberOfProcessedSieves, uint32 timestamp, uint32 proofChainLength, uint8 proofChainType, uint32 proofNonce, uint32 proofMultiplier, uint32 proofDepth);
+

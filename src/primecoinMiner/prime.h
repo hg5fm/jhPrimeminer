@@ -427,6 +427,53 @@ public:
     bool Weave();
 };
 
+class CPrimalityTestParams
+{
+public:
+    // GMP variables
+    mpz_t mpzE;
+    mpz_t mpzR;
+    mpz_t mpzRplusOne;
+    
+    // GMP C++ variables
+    mpz_class mpzOriginMinusOne;
+    mpz_class mpzOriginPlusOne;
+    mpz_class N;
+
+
+    // Values specific to a round
+    unsigned int nBits;
+    unsigned int nPrimorialSeq;
+	unsigned int nCandidateType;
+
+    // Results
+	unsigned int nChainLength;
+
+    CPrimalityTestParams(unsigned int nBits, unsigned int nPrimorialSeq)
+    {
+        this->nBits = nBits;
+        this->nPrimorialSeq = nPrimorialSeq;
+        nChainLength = 0;
+        mpz_init(mpzE);
+        mpz_init(mpzR);
+        mpz_init(mpzRplusOne);
+    }
+
+    ~CPrimalityTestParams()
+    {
+        mpz_clear(mpzE);
+        mpz_clear(mpzR);
+        mpz_clear(mpzRplusOne);
+    }
+};
+
+
+bool ProbablePrimeChainTestFast(const mpz_class& mpzPrimeChainOrigin, CPrimalityTestParams& testParams);
+
+#define SIEVE_FLAG_C1_COMPOSITE	(1<<0) // sieve for +1 -> -1
+#define SIEVE_FLAG_C2_COMPOSITE	(1<<1) // sieve for -1 -> +1
+#define SIEVE_FLAG_BT_COMPOSITE	(1<<2) // combined
+
 inline void mpz_set_uint256(mpz_t r, uint256& u)
 {
     mpz_import(r, 32 / sizeof(unsigned long), -1, sizeof(unsigned long), -1, 0, &u);

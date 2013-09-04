@@ -47,37 +47,61 @@ bool xptClient_processPacket_blockData1(xptClient_t* xptClient)
 	// parse block data
 	bool recvError = false;
 	xptPacketbuffer_beginReadPacket(xptClient->recvBuffer);
-	xptClient->workDataValid = false;
 	// add general block info
-	xptClient->blockWorkInfo.version = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);			// version
-	xptClient->blockWorkInfo.height = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);			// block height
-	xptClient->blockWorkInfo.nBits = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);			// nBits
-	xptClient->blockWorkInfo.nBitsShare = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);		// nBitsRecommended / nBitsShare
-	xptClient->blockWorkInfo.nTime = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);			// nTimestamp
-	xptPacketbuffer_readData(xptClient->recvBuffer, xptClient->blockWorkInfo.prevBlock, 32, &recvError);	// prevBlockHash
-	uint32 payloadNum = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);							// payload num
-	if( recvError )
+	EnterCriticalSection(&xptClient->cs_workAccess);
+	float earnedShareValue = xptPacketbuffer_readFloat(xptClient->recvBuffer, &recvError);
+	printf("earnedShareValue %f\n", earnedShareValue);
+	xptClient->earnedShareValue += earnedShareValue;
+	uint32 numWorkBundle = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError); // how many workBundle blocks we have
+	for(uint32 b=0; b<numWorkBundle; b++)
 	{
-		printf("xptClient_processPacket_blockData1(): Parse error\n");
-		return false;
+		// general block info
+		uint32 blockVersion = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 blockHeight = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 blockBits = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 blockBitsForShare = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 blockTimestamp = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 workBundleFlags = xptPacketbuffer_readU8(xptClient->recvBuffer, &recvError);
+		uint8 prevBlockHash[32];
+		xptPacketbuffer_readData(xptClient->recvBuffer, prevBlockHash, 32, &recvError);
+		// server constraints
+		uint32 fixedPrimorial = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 fixedHashFactor = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 sievesizeMin = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 sievesizeMax = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 primesToSieveMin = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 primesToSieveMax = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 sieveChainLength = xptPacketbuffer_readU8(xptClient->recvBuffer, &recvError);
+		uint32 nonceMin = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 nonceMax = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		uint32 numPayload =  xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError);
+		for(uint32 p=0; p<numPayload; p++)
+		{
+			xptBlockWorkInfo_t* blockData = xptClient->blockWorkInfo + xptClient->blockWorkSize;
+			if( xptClient->blockWorkSize >= 400 )
+				break;
+			blockData->version = blockVersion;
+			blockData->height = blockHeight;
+			blockData->nBits = blockBits;
+			blockData->nBitsShare = blockBitsForShare;
+			blockData->nTime = blockTimestamp;
+			memcpy(blockData->prevBlockHash, prevBlockHash, 32);
+			blockData->flags = workBundleFlags;
+			blockData->fixedPrimorial = fixedPrimorial;
+			blockData->fixedHashFactor = fixedHashFactor;
+			blockData->sievesizeMin = sievesizeMin;
+			blockData->sievesizeMax = sievesizeMax;
+			blockData->primesToSieveMin = primesToSieveMin;
+			blockData->primesToSieveMax = primesToSieveMax;
+			blockData->sieveChainLength = sieveChainLength;
+			blockData->nonceMin = nonceMin;
+			blockData->nonceMax = nonceMax;
+			blockData->flags = workBundleFlags;
+			xptPacketbuffer_readData(xptClient->recvBuffer, blockData->merkleRoot, 32, &recvError);
+			xptClient->blockWorkSize++;
 	}
-	if( xptClient->payloadNum != payloadNum )
-	{
-		printf("xptClient_processPacket_blockData1(): Invalid payloadNum\n");
-		return false;
 	}
-	for(uint32 i=0; i<payloadNum; i++)
-	{
-		// read merkle root for each work data entry
-		xptPacketbuffer_readData(xptClient->recvBuffer, xptClient->workData[i].merkleRoot, 32, &recvError);
-	}
-	if( recvError )
-	{
-		printf("xptClient_processPacket_blockData1(): Parse error 2\n");
-		return false;
-	}
-	xptClient->workDataValid = true;
-	xptClient->workDataCounter++;
+	LeaveCriticalSection(&xptClient->cs_workAccess);
 	return true;
 }
 
@@ -108,17 +132,43 @@ bool xptClient_processPacket_shareAck(xptClient_t* xptClient)
 		valid_shares++;
 		time_t now = time(0);
 		char* dt = ctime(&now);
-		//printf("Share accepted by server");
-		//printf(" [ %d / %d val: %.6f] %s", valid_shares, total_shares, shareValue, dt);
+		printf("Share accepted by server");
+		printf(" [ %d / %d val: %.6f] %s", valid_shares, total_shares, shareValue, dt);
+		primeStats.fShareValue += shareValue;		
 		primeStats.fTotalSubmittedShareValue += shareValue;
 	}
 	else
 	{
-		// error logging in -> disconnect
+		// share not accepted by server
 		total_shares++;
 		printf("Invalid share\n");
 		if( rejectReason[0] != '\0' )
 			printf("Reason: %s\n", rejectReason);
 	}
+	return true;
+}
+
+
+/*
+ * Called when a packet with the opcode XPT_OPC_S_MESSAGE is received
+ */
+bool xptClient_processPacket_message(xptClient_t* xptClient)
+{
+	xptPacketbuffer_t* cpb = xptClient->recvBuffer;
+	// read data from the packet
+	xptPacketbuffer_beginReadPacket(cpb);
+	// start parsing
+	bool readError = false;
+	// read type field (not used yet)
+	uint32 messageType = xptPacketbuffer_readU8(cpb, &readError);
+	if( readError )
+		return false;
+	// read message text (up to 1024 bytes)
+	char messageText[1024];
+	xptPacketbuffer_readString(cpb, messageText, 1024, &readError);
+	messageText[1023] = '\0';
+	if( readError )
+		return false;
+	printf("Server message: %s\n", messageText);
 	return true;
 }
