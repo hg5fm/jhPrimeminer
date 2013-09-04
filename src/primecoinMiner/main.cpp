@@ -1083,7 +1083,7 @@ static void CacheAutoTuningWorkerThread(bool bEnabled)
 			continue;// wait a litle at the beginning
 
 		nL1CacheElements = primeStats.nL1CacheElements;
-		mL1Stat.insert( KeyVal(primeStats.nL1CacheElements, primeStats.nWaveRound == 0 ? 0xFFFF : primeStats.nWaveTime / primeStats.nWaveRound));
+		mL1Stat.insert( KeyVal((unsigned int)primeStats.nL1CacheElements, (unsigned int)primeStats.nWaveRound == 0 ? 0xFFFF : primeStats.nWaveTime / primeStats.nWaveRound));
 		if (nL1CacheElements < nL1CacheElementsMax)
 			primeStats.nL1CacheElements += nL1CacheElementsIncrement;
 		else
