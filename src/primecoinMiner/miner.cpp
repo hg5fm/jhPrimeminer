@@ -119,9 +119,11 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 		if( nProbableChainLength >= proofOfWork_maxChainlength )
 		{
 			proofOfWork_maxChainlength = nProbableChainLength;
-			proofOfWork_multiplier = nTriedMultiplier;
+			uint32 powExtension = (*psieve)->GetCandidateExtension();
+			proofOfWork_multiplier = nTriedMultiplier >> powExtension;
 			proofOfWork_nonce = block->nonce;
-			proofOfWork_depth = 0; // doing no depth scan (multipass sieve only)
+			proofOfWork_depth = powExtension;
+			//printf("New PoW chain @%d * 2^%d (sieve size: %d)\n", proofOfWork_multiplier, proofOfWork_depth, nMaxSieveSize);
 			// get chaintype
 			if (nCandidateType == PRIME_CHAIN_CUNNINGHAM1)
 				proofOfWork_chainType = 0; // Cunningham first kind

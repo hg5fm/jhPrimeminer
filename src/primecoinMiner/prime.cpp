@@ -35,7 +35,7 @@ static unsigned int int_invert(unsigned int a, unsigned int nPrime);
 
 void GeneratePrimeTable(unsigned int nSieveSize)
 {
-    const unsigned int nPrimeTableLimit = nSieveSize ;
+    const unsigned int nPrimeTableLimit = nSieveSize;
     vPrimes.clear();
 	// Generate prime table using sieve of Eratosthenes
     std::vector<bool> vfComposite (nPrimeTableLimit, false);
@@ -50,7 +50,8 @@ void GeneratePrimeTable(unsigned int nSieveSize)
 		if (!vfComposite[n])
             vPrimes.push_back(n);
     printf("GeneratePrimeTable() : prime table [1, %d] generated with %lu primes\n", nPrimeTableLimit, vPrimes.size());
-	vPrimesSize = vPrimes.size();  
+	vPrimesSize = vPrimes.size();
+	//vPrimesSize = nSieveSize;
  }
 
 // Get next prime number of p
@@ -1464,3 +1465,4 @@ bool CSieveOfEratosthenes::Weave()
 	primeStats.nWaveRound ++;
     return false;
 }
+

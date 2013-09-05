@@ -906,10 +906,10 @@ void jhMiner_parseCommandline(int argc, char **argv)
 		}
 		else if( memcmp(argument, "-tune", 6)==0 )
 		{
-			// -primes
+			// -tune
 			if( cIdx >= argc )
 			{
-				printf("Missing flag after -primes option\n");
+				printf("Missing flag after -tune option\n");
 				ExitProcess(0);
 			}
 			if (memcmp(argument, "true", 5) == 0 ||  memcmp(argument, "1", 2) == 0)
@@ -935,16 +935,16 @@ void jhMiner_parseCommandline(int argc, char **argv)
 		}
 		else if( memcmp(argument, "-se", 4)==0 )
 		{
-			// -target
+			// -se
 			if( cIdx >= argc )
 			{
 				printf("Missing number after -se option\n");
 				ExitProcess(0);
 			}
 			commandlineInput.sieveExtensions = atoi(argv[cIdx]);
-			if( commandlineInput.sieveExtensions <= 1 || commandlineInput.sieveExtensions > 15 )
+			if( commandlineInput.sieveExtensions < 1 || commandlineInput.sieveExtensions > 15 )
 			{
-				printf("-se parameter out of range, must be between 0 - 15\n");
+				printf("-se parameter out of range, must be between 1 - 15\n");
 				ExitProcess(0);
 			}
 			cIdx++;
@@ -1217,20 +1217,20 @@ static void input_thread()
 			std::exit(0);
 			return;
 			break;
-		case '[':
-			if (!PrimeTableGetPreviousPrime((unsigned int) minerSettings.nPrimorialMultiplier))
-				error("PrimecoinMiner() : primorial decrement overflow");	
-			printf("Primorial Multiplier: %u\n", minerSettings.nPrimorialMultiplier);
-			break;
-		case ']':
-			if (!PrimeTableGetNextPrime((unsigned int)  minerSettings.nPrimorialMultiplier))
-				error("PrimecoinMiner() : primorial increment overflow");
-			printf("Primorial Multiplier: %u\n", minerSettings.nPrimorialMultiplier);
-			break;
-		case 'p': case 'P':
-			bEnablenPrimorialMultiplierTuning = !bEnablenPrimorialMultiplierTuning;
-			printf("Primorial Multiplier Auto Tuning was %s.\n", bEnablenPrimorialMultiplierTuning ? "Enabled": "Disabled");
-			break;
+		//case '[':
+		//	if (!PrimeTableGetPreviousPrime((unsigned int) minerSettings.nPrimorialMultiplier))
+		//		error("PrimecoinMiner() : primorial decrement overflow");	
+		//	printf("Primorial Multiplier: %u\n", minerSettings.nPrimorialMultiplier);
+		//	break;
+		//case ']':
+		//	if (!PrimeTableGetNextPrime((unsigned int)  minerSettings.nPrimorialMultiplier))
+		//		error("PrimecoinMiner() : primorial increment overflow");
+		//	printf("Primorial Multiplier: %u\n", minerSettings.nPrimorialMultiplier);
+		//	break;
+		//case 'p': case 'P':
+		//	bEnablenPrimorialMultiplierTuning = !bEnablenPrimorialMultiplierTuning;
+		//	printf("Primorial Multiplier Auto Tuning was %s.\n", bEnablenPrimorialMultiplierTuning ? "Enabled": "Disabled");
+		//	break;
 		case 'c': case 'C':
 			if (!bOptimalL1SearchInProgress)
 			{
@@ -1241,47 +1241,48 @@ static void input_thread()
 		case 's': case 'S':			
 			PrintCurrentSettings();
 			break;
-		case '+': case '=':
-			if (!bOptimalL1SearchInProgress && nMaxSieveSize < 10000000)
-				nMaxSieveSize += 100000;
-			printf("Sieve size: %u\n", nMaxSieveSize);
-			break;
-		case '-':
-			if (!bOptimalL1SearchInProgress && nMaxSieveSize > 100000)
-				nMaxSieveSize -= 100000;
-			printf("Sieve size: %u\n", nMaxSieveSize);
-			break;
-		case 0: case 224:
-			{
-				input = _getch();	
-				switch (input)
-				{
-				case 72: // key up
-					if (!bOptimalL1SearchInProgress && nSievePercentage < 100)
-						nSievePercentage ++;
-					printf("Sieve Percentage: %u%%\n", nSievePercentage);
-					break;
+		//case '+': case '=':
+		//	if (!bOptimalL1SearchInProgress && nMaxSieveSize < 10000000)
+		//		nMaxSieveSize += 100000;
+		//	printf("Sieve size: %u\n", nMaxSieveSize);
+		//	break;
+		//case '-':
+		//	if (!bOptimalL1SearchInProgress && nMaxSieveSize > 100000)
+		//		nMaxSieveSize -= 100000;
+		//	printf("Sieve size: %u\n", nMaxSieveSize);
+		//	break;
+		//case 0: case 224:
+		//	{
+		//		input = _getch();	
+		//		switch (input)
+		//		{
+		//		case 72: // key up
+		//			if (!bOptimalL1SearchInProgress && nSievePercentage < 100)
+		//				nSievePercentage ++;
+		//			printf("Sieve Percentage: %u%%\n", nSievePercentage);
+		//			break;
 
-				case 80: // key down
-					if (!bOptimalL1SearchInProgress && nSievePercentage > 3)
-						nSievePercentage --;
-					printf("Sieve Percentage: %u%%\n", nSievePercentage);
-					break;
+		//		case 80: // key down
+		//			if (!bOptimalL1SearchInProgress && nSievePercentage > 3)
+		//				nSievePercentage --;
+		//			printf("Sieve Percentage: %u%%\n", nSievePercentage);
+		//			break;
 
-				case 77:    // key right
-					if( nRoundSievePercentage < 98)
-						nRoundSievePercentage++;
-					printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
-					break;
-				case 75:    // key left
-					if( nRoundSievePercentage > 2)
-						nRoundSievePercentage--;
-					printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
-					break;
-				}
-			}
+		//		case 77:    // key right
+		//			if( nRoundSievePercentage < 98)
+		//				nRoundSievePercentage++;
+		//			printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
+		//			break;
+		//		case 75:    // key left
+		//			if( nRoundSievePercentage > 2)
+		//				nRoundSievePercentage--;
+		//			printf("Round Sieve Percentage: %u%%\n", nRoundSievePercentage);
+		//			break;
+		//		}
+		//	}
 
 		}
+		Sleep(20);
 	}
 
 	return;
@@ -1377,14 +1378,14 @@ int jhMiner_main_xptMode()
 			return 0;
 
 		// calculate stats every second tick
-		if( loopCounter % 2 == 0)
+		if( loopCounter % 3 == 0)
 		{
 			double totalRunTime = (double)(GetTickCount() - primeStats.startTime);
 			double statsPassedTime = (double)(GetTickCount() - primeStats.primeLastUpdate);
 			if( statsPassedTime < 1.0 )
 				statsPassedTime = 1.0; // avoid division by zero
 			
-			double numbersTestedPerSec = (double)primeStats.numAllTestedNumbers / totalRunTime;
+			double numbersTestedPerSec = (double)primeStats.numAllTestedNumbers / statsPassedTime;
 			//numbersTestedPerSec *= 0.0001;
 			double primesPerSecond = (double)primeStats.primeChainsFound / (statsPassedTime / 1000.0);
 			primeStats.primeLastUpdate = GetTickCount();
@@ -1392,6 +1393,7 @@ int jhMiner_main_xptMode()
 			float sievesPerSecond = (double)primeStats.nSieveRounds / (statsPassedTime / 1000.0);
 
 			primeStats.primeChainsFound = 0;
+			primeStats.numAllTestedNumbers = 0;
 			primeStats.nCandidateCount = 0;
 			primeStats.nSieveRounds = 0;
 			uint32 bestDifficulty = primeStats.bestPrimeChainDifficulty;
@@ -1434,7 +1436,7 @@ int jhMiner_main_xptMode()
 			if( tickCount - time_powSend >= (70*1000) )
 			{
 				jhMiner_primecoinSendProofOfWork();
-				time_powSend = GetTickCount() - (rand()%2)*1000; // make sure not every miner sends at the same time
+				time_powSend = GetTickCount() - (rand()%20)*1000; // make sure not every miner sends at the same time
 			}
 			if( passedTime >= 4000 )
 				break;
@@ -1716,16 +1718,16 @@ int main(int argc, char **argv)
 	printf("\nPPS = 'Primes per Second', Val/h = 'Share Value per Hour'\n");
 	printf("Keyboard shortcuts:\n");
 	printf("   <Ctrl-C>, <Q>     - Quit\n");
-	printf("   <Up arrow key>    - Increment Sieve Percentage\n");
-	printf("   <Down arrow key>  - Decrement Sieve Percentage\n");
-	printf("   <Left arrow key>  - Decrement Round Sieve Percentage\n");
-	printf("   <Right arrow key> - Increment Round Sieve Percentage\n");
-	printf("   <P> - Enable/Disable Round Sieve Percentage Auto Tuning\n");
+	//printf("   <Up arrow key>    - Increment Sieve Percentage\n");
+	//printf("   <Down arrow key>  - Decrement Sieve Percentage\n");
+	//printf("   <Left arrow key>  - Decrement Round Sieve Percentage\n");
+	//printf("   <Right arrow key> - Increment Round Sieve Percentage\n");
+	//printf("   <P> - Enable/Disable Round Sieve Percentage Auto Tuning\n");
 	printf("   <S> - Print current settings\n");
-	printf("   <[> - Decrement Primorial Multiplier\n");
-	printf("   <]> - Increment Primorial Multiplier\n");
-	printf("   <-> - Decrement Sive size\n");
-	printf("   <+> - Increment Sieve size\n");
+	//printf("   <[> - Decrement Primorial Multiplier\n");
+	//printf("   <]> - Increment Primorial Multiplier\n");
+	//printf("   <-> - Decrement Sive size\n");
+	//printf("   <+> - Increment Sieve size\n");
 	printf("Note: While the initial auto tuning is in progress several values cannot be changed.\n");
 
 

@@ -50,7 +50,6 @@ bool xptClient_processPacket_blockData1(xptClient_t* xptClient)
 	// add general block info
 	EnterCriticalSection(&xptClient->cs_workAccess);
 	float earnedShareValue = xptPacketbuffer_readFloat(xptClient->recvBuffer, &recvError);
-	printf("earnedShareValue %f\n", earnedShareValue);
 	xptClient->earnedShareValue += earnedShareValue;
 	uint32 numWorkBundle = xptPacketbuffer_readU32(xptClient->recvBuffer, &recvError); // how many workBundle blocks we have
 	for(uint32 b=0; b<numWorkBundle; b++)

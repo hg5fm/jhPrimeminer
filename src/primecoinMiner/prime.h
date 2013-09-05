@@ -425,6 +425,12 @@ public:
     //   True  - weaved another prime; nComposite - number of composites removed
     //   False - sieve already completed
     bool Weave();
+
+	unsigned int GetCandidateExtension() {
+		if( fCandidateIsExtended == false )
+			return 0;
+		return nCandidateActiveExtension+1;
+	}
 };
 
 class CPrimalityTestParams
