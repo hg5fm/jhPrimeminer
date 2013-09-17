@@ -162,7 +162,6 @@ class CSieveOfEratosthenes
     unsigned int nChainLength; // target chain length
     unsigned int nSieveLayers; // sieve layers
     unsigned int nPrimes; // number of times to weave the sieve
-    unsigned int nTotalPrimes;
     //CBlockIndex* pindexPrev;
     
     unsigned int GetWordNum(unsigned int nBitNum) {
@@ -176,7 +175,7 @@ class CSieveOfEratosthenes
     void ProcessMultiplier(sieve_word_t *vfComposites, const unsigned int nMinMultiplier, const unsigned int nMaxMultiplier, const std::vector<unsigned int>& vPrimes, unsigned int *vMultipliers, unsigned int nLayerSeq);
 
 public:
-	CSieveOfEratosthenes(unsigned int nSieveSize, unsigned int nSievePercentage, unsigned int nSieveExtensions, unsigned int nChainLength, mpz_class& mpzHash, mpz_class& mpzFixedMultiplier)
+	CSieveOfEratosthenes(unsigned int nSieveSize, uint32 nPrimesToSieve, unsigned int nSievePercentage, unsigned int nSieveExtensions, unsigned int nChainLength, mpz_class& mpzHash, mpz_class& mpzFixedMultiplier)
 	{
 		this->nSieveSize = nSieveSize;
 		this->nSievePercentage = nSievePercentage;
@@ -214,8 +213,7 @@ public:
 
 		// Process only a set percentage of the primes
 		// Most composites are still found
-		nTotalPrimes = vPrimes.size();
-		nPrimes = (uint64)nTotalPrimes * nSievePercentage / 100;
+		nPrimes = (uint64)nPrimesToSieve * nSievePercentage / 100;
 	}
 
 	~CSieveOfEratosthenes()
@@ -231,7 +229,7 @@ public:
 	}
 
 
-	void Init(unsigned int nSieveSize, unsigned int nSievePercentage, unsigned int nSieveExtensions, unsigned int nChainLength, mpz_class& mpzHash, mpz_class& mpzFixedMultiplier)
+	void Init(unsigned int nSieveSize, unsigned int nPrimesToSieve, unsigned int nSievePercentage, unsigned int nSieveExtensions, unsigned int nChainLength, mpz_class& mpzHash, mpz_class& mpzFixedMultiplier)
 	{
 		this->nSieveSize = nSieveSize;
 		this->nSievePercentage = nSievePercentage;
@@ -273,8 +271,7 @@ public:
 		memset(vfExtendedCompositeCunningham2, 0, nSieveExtensions * nCandidatesBytes);
 		this->nChainLength = nChainLength;
 		nSieveLayers = nChainLength + nSieveExtensions;
-		const unsigned int nTotalPrimes = vPrimes.size();
-		nPrimes = (uint64)nTotalPrimes * nSievePercentage / 100;
+		nPrimes = (uint64)nPrimesToSieve * nSievePercentage / 100;
 
 	}
 

@@ -44,7 +44,7 @@ minerSettings_t minerSettings = {0};
 #define DEFAULT_SIEVE_SIZE			(1024*2000)
 #define DEFAULT_PRIMES_TO_SIEVE		(28000)
 
-char* minerVersionString = "jhPrimeminer v0.5 r5 (official)"; // this is the version string displayed on the worker live stats page (max 45 characters)
+char* minerVersionString = "jhPrimeminer v8.0 r1 (unofficial)"; // this is the version string displayed on the worker live stats page (max 45 characters)
 
 bool error(const char *format, ...)
 {
@@ -1058,7 +1058,7 @@ static void CacheAutoTuningWorkerThread(bool bEnabled)
 	DWORD startTime = GetTickCount();	
 	unsigned int nL1CacheElementsStart = 64000;
 	unsigned int nL1CacheElementsMax   = 2560000;
-	unsigned int nL1CacheElementsIncrement = 64000;
+	unsigned int nL1CacheElementsIncrement = 32000;
 	BYTE nSampleSeconds = 20;
 
 	unsigned int nL1CacheElements = primeStats.nL1CacheElements;
@@ -1251,6 +1251,19 @@ static void input_thread()
 		//		nMaxSieveSize -= 100000;
 		//	printf("Sieve size: %u\n", nMaxSieveSize);
 		//	break;
+		case '+': case '=':
+			if (!bOptimalL1SearchInProgress && minerSettings.nPrimesToSieve < 1000000)
+				minerSettings.nPrimesToSieve += 200;
+			//minerSettings.nPrimesToSieve = max(block->primesToSieveMin, min(block->primesToSieveMax, minerSettings.nPrimesToSieve));
+
+			printf("Primes to Sieve: %u\n", minerSettings.nPrimesToSieve);
+			break;
+		case '-':
+			if (!bOptimalL1SearchInProgress && minerSettings.nPrimesToSieve > 1000)
+				minerSettings.nPrimesToSieve -= 200;
+			//minerSettings.nPrimesToSieve = max(block->primesToSieveMin, min(block->primesToSieveMax, minerSettings.nPrimesToSieve));
+			printf("Primes to Sieve: %u\n", minerSettings.nPrimesToSieve);
+			break;
 		//case 0: case 224:
 		//	{
 		//		input = _getch();	
@@ -1490,8 +1503,8 @@ int jhMiner_main_xptMode()
 				for (int i = 6; i <= 10; i++)
 				{
 					double sharePerHour = ((double)primeStats.chainCounter[i] / totalRunTime) * 3600000.0;
-					printf("---- %2d-chain count: %4u - %2dch/h: %7.03f - Share Value: %00.03f\n", 
-						i, primeStats.chainCounter[i], i, sharePerHour, (double)primeStats.chainCounter[i] * GetValueOfShareMajor(i));
+					printf("---- %2d-chain count: %4u - %2dch/h: %7.03f \n", 
+						i, primeStats.chainCounter[i], i, sharePerHour);
 				}
 				//printf("---- Share Value for the last block: %.06f\n", primeStats.fBlockShareValue);
 				printf("---- Total Share Value submitted to the pool: %.06f\n", primeStats.fTotalSubmittedShareValue);

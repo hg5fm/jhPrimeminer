@@ -35,7 +35,7 @@ static unsigned int int_invert(unsigned int a, unsigned int nPrime);
 
 void GeneratePrimeTable(unsigned int nSieveSize)
 {
-    const unsigned int nPrimeTableLimit = nSieveSize;
+    const unsigned int nPrimeTableLimit = 20000000;
     vPrimes.clear();
 	// Generate prime table using sieve of Eratosthenes
     std::vector<bool> vfComposite (nPrimeTableLimit, false);
@@ -51,7 +51,6 @@ void GeneratePrimeTable(unsigned int nSieveSize)
             vPrimes.push_back(n);
     printf("GeneratePrimeTable() : prime table [1, %d] generated with %lu primes\n", nPrimeTableLimit, vPrimes.size());
 	vPrimesSize = vPrimes.size();
-	//vPrimesSize = nSieveSize;
  }
 
 // Get next prime number of p
@@ -1266,7 +1265,7 @@ bool CSieveOfEratosthenes::Weave()
         {
             // Combine multiple primes to produce a big divisor
             unsigned int nPrimeCombined = 1;
-            while (nPrimeCombined < UINT_MAX / vPrimes[nCombinedEndSeq] && nCombinedEndSeq < nTotalPrimes - 1)
+            while (nPrimeCombined < UINT_MAX / vPrimes[nCombinedEndSeq] )
             {
                 nPrimeCombined *= vPrimes[nCombinedEndSeq];
                 nCombinedEndSeq++;
@@ -1326,7 +1325,7 @@ bool CSieveOfEratosthenes::Weave()
 
     // Number of elements that are likely to fit in L1 cache
     // NOTE: This needs to be a multiple of nWordBits
-    const unsigned int nL1CacheElements = 224000;
+    const unsigned int nL1CacheElements = primeStats.nL1CacheElements;
     const unsigned int nArrayRounds = (nSieveSize + nL1CacheElements - 1) / nL1CacheElements;
 
     // Calculate the number of CC1 and CC2 layers needed for BiTwin candidates
@@ -1378,7 +1377,7 @@ bool CSieveOfEratosthenes::Weave()
                         vfCompositeBiTwin[nWord] |= vfCompositeLayerCC1[nWord] | vfCompositeLayerCC2[nWord];
                     }
                 }
-                else if (nLayerSeq < nBiTwinCC2Layers)
+                else if (nLayerSeq < nBiTwinCC1Layers)
                 {
                     for (unsigned int nWord = nMinWord; nWord < nMaxWord; nWord++)
                     {
@@ -1416,7 +1415,7 @@ bool CSieveOfEratosthenes::Weave()
                             vfExtTWN[nWord] |= vfCompositeLayerCC1[nWord] | vfCompositeLayerCC2[nWord];
                         }
                     }
-                    else if (nLayerExtendedSeq < nBiTwinCC2Layers)
+                    else if (nLayerExtendedSeq < nBiTwinCC1Layers)
                     {
                         for (unsigned int nWord = nExtMinWord; nWord < nMaxWord; nWord++)
                         {

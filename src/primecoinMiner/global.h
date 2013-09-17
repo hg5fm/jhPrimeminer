@@ -91,19 +91,19 @@ static inline void swap32yes(void*out, const void*in, size_t sz) {
 static inline double GetValueOfShareMajor(sint32 nShareDifficultyMajor)
 {
 	if( nShareDifficultyMajor >= 12 )
-		return 100.0;
+		return 15.0;
 	else if( nShareDifficultyMajor == 11 )
-		return 100.0;
+		return 15.0;
 	else if( nShareDifficultyMajor == 10 )
-		return 80.0;
+		return 15.0;
 	else if( nShareDifficultyMajor == 9 )
-		return 16.0;
+		return 6.0;
 	else if( nShareDifficultyMajor == 8 )
-		return 1.0;
+		return 1.2;
 	else if( nShareDifficultyMajor == 7 )
-		return 0.03125;
+		return 0.07;
 	else if( nShareDifficultyMajor == 6 )
-		return 0.000976;
+		return 0.0045;
     return 0.0; // share invalid
 }
 

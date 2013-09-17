@@ -29,18 +29,17 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 
     unsigned int nNewTarget = nTarget > 0 ? nTarget : TargetGetLength(block->nBits);
 
-	//unsigned long nTarget = 0x07000000;
-
 	//int64 nStart, nCurrent; // microsecond timer
+	unsigned int nPrimesToSieve = minerSettings.nPrimesToSieve;
 	if (*psieve == NULL)
 	{
 		// Build sieve
-		*psieve = new CSieveOfEratosthenes(nMaxSieveSize, nSievePercentage, nSieveExtensions, nNewTarget, mpzHash, mpzFixedMultiplier);
+		*psieve = new CSieveOfEratosthenes(nMaxSieveSize, nPrimesToSieve, nSievePercentage, nSieveExtensions, nNewTarget, mpzHash, mpzFixedMultiplier);
 		(*psieve)->Weave();
 	}
 	else
 	{
-		(*psieve)->Init(nMaxSieveSize, nSievePercentage, nSieveExtensions, nNewTarget, mpzHash, mpzFixedMultiplier);
+		(*psieve)->Init(nMaxSieveSize, nPrimesToSieve, nSievePercentage, nSieveExtensions, nNewTarget, mpzHash, mpzFixedMultiplier);
 		(*psieve)->Weave();
 	}
 
@@ -106,9 +105,6 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 				
 		mpzChainOrigin = mpzHash * mpzFixedMultiplier * nTriedMultiplier;		
 		nChainLength = 0;		
-		//nChainLengthCunningham1 = 0;
-		//nChainLengthCunningham2 = 0;
-		//nChainLengthBiTwin = 0;
 
 		bool canSubmitAsShare = ProbablePrimeChainTestFast(mpzChainOrigin, testParams);
 		nProbableChainLength = testParams.nChainLength;
@@ -191,10 +187,10 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 			char sNow [80];
 			strftime (sNow, 80, "%x - %X",timeinfo);
 
-			float shareValue = GetValueOfShareMajor( shareDifficultyMajor);
+			//float shareValue = GetValueOfShareMajor( shareDifficultyMajor);
 			float shareDiff = GetChainDifficulty(nProbableChainLength);
 
-			printf("%s - SHARE FOUND !!! (Th#: %u) ---  DIFF: %f - VAL: %.6f", sNow, threadIndex, shareDiff, shareValue);
+			printf("%s - SHARE FOUND !!! (Th#: %u) ---  DIFF: %f", sNow, threadIndex, shareDiff);
 			if(shareDifficultyMajor >= 6)
 				printf("    >%u\n", shareDifficultyMajor);
 			else
@@ -204,13 +200,11 @@ bool MineProbablePrimeChain(CSieveOfEratosthenes** psieve, primecoinBlock_t* blo
 			if (jhMiner_pushShare_primecoin(blockRawData, block))
 				primeStats.foundShareCount ++;
 			multiplierSet.insert(block->mpzPrimeChainMultiplier);			
-			primeStats.fShareValue += shareValue;
-			primeStats.fBlockShareValue += shareValue;
+			//primeStats.fShareValue += shareValue;
+			//primeStats.fBlockShareValue += shareValue;
 			RtlZeroMemory(blockRawData, 256);
 			multipleShare = true;
 		}
-		//if(TargetGetLength(nProbableChainLength) >= 1)
-		//	nPrimesHit++;
 		//nCurrent = GetTickCount();
 	}
 	//if( *psieve )
@@ -291,9 +285,21 @@ bool BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex)
         uint256 phash = primecoinBlock->blockHeaderHash;
         mpz_class mpzHash;
         mpz_set_uint256(mpzHash.get_mpz_t(), phash);
-        
+
 		if( nHashFactor > 0 ) 
 		{
+			//while (primecoinBlock->nonce < primecoinBlock->nonceMax) {
+			//	primecoinBlock->nonce++;			
+			//	primecoinBlock_generateHeaderHash(primecoinBlock, primecoinBlock->blockHeaderHash.begin());
+			//	phash = primecoinBlock->blockHeaderHash;
+			//	mpz_set_uint256(mpzHash.get_mpz_t(), phash);
+			//	
+			//	if (phash < hashBlockHeaderLimit)
+			//         continue;
+			//    
+			//	if (mpz_divisible_ui_p(mpzHash.get_mpz_t(), nHashFactor)) //&& mpz_divisible_ui_p(mpzHash.get_mpz_t(), 2))
+			//		break;
+			//}
 			while ((phash < hashBlockHeaderLimit || !mpz_divisible_ui_p(mpzHash.get_mpz_t(), nHashFactor)) && primecoinBlock->nonce < primecoinBlock->nonceMax) {
 				primecoinBlock->nonce++;
 				primecoinBlock_generateHeaderHash(primecoinBlock, primecoinBlock->blockHeaderHash.begin());
