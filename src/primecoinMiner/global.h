@@ -84,35 +84,6 @@ static inline void swap32yes(void*out, const void*in, size_t sz) {
 #define swap32tobe(out, in, sz)  swap32yes(out, in, sz)
 
 
-/*
- * Returns the value of the share in 'share points' 
- */
-static inline double GetValueOfShareMajor(sint32 nShareDifficultyMajor)
-{
-	if( nShareDifficultyMajor >= 12 )
-		return 100.0;
-	else if( nShareDifficultyMajor == 11 )
-		return 100.0;
-	else if( nShareDifficultyMajor == 10 )
-		return 80.0;
-	else if( nShareDifficultyMajor == 9 )
-		return 16.0;
-	else if( nShareDifficultyMajor == 8 )
-		return 1.0;
-	else if( nShareDifficultyMajor == 7 )
-		return 0.03125;
-	else if( nShareDifficultyMajor == 6 )
-		return 0.000976;
-    return 0.0; // share invalid
-}
-
-static inline double GetValueOfShare(uint32 nShareBits)
-{
-	sint32 shareDifficultyMajor = (sint32)(nShareBits>>24);
-	return GetValueOfShareMajor( shareDifficultyMajor);
-}
-
-
 static inline float GetChainDifficulty(unsigned int nChainLength)
 {
 	return (float)nChainLength / 16777216.0;
@@ -157,7 +128,7 @@ typedef struct
 	volatile float fShareValue;
 	volatile float fBlockShareValue;
 	volatile float fTotalSubmittedShareValue;
-	volatile uint32 chainCounter[12];
+	volatile uint32 chainCounter[4][13];
 	volatile uint32 nWaveTime;
 	volatile unsigned int nWaveRound;
 	volatile uint32 nTestTime;
@@ -167,9 +138,9 @@ typedef struct
 	volatile float nPrevChainHit;
 	volatile unsigned int nPrimorialMultiplier;
 	
-	volatile float nSieveRounds;
-	volatile float nCandidateCount;
-	
+   volatile float nSieveRounds;
+   volatile float nCandidateCount;
+
 	CRITICAL_SECTION cs;
 
 	// since we can generate many (useless) primes ultra fast if we simply set sieve size low, 
@@ -231,7 +202,7 @@ void primecoinBlock_generateHeaderHash(primecoinBlock_t* primecoinBlock, uint8 h
 uint32 _swapEndianessU32(uint32 v);
 uint32 jhMiner_getCurrentWorkBlockHeight(sint32 threadIndex);
 
-bool BitcoinMiner(primecoinBlock_t* primecoinBlock, sint32 threadIndex);
+bool BitcoinMiner(primecoinBlock_t* primecoinBlock, CSieveOfEratosthenes*& psieve, const sint32 threadIndex, const unsigned int nonceStep);
 
 // direct access to share counters
 extern volatile int total_shares;
