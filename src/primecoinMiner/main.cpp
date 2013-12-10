@@ -884,6 +884,7 @@ typedef struct
 	sint32 sieveExtensions;
 	// getblocktemplate stuff
 	char* xpmAddress; // we will use this XPM address for block payout
+	bool useGetwork;
 }commandlineInput_t;
 
 commandlineInput_t commandlineInput = {0};
@@ -910,6 +911,7 @@ void jhMiner_printHelp()
 	puts("   -primes <num>                 Sets how many prime factors are used to filter the sieve");
 	puts("                                     Default is MaxSieveSize. Valid range: 300 - 200000000");
 	puts("   -xpm <wallet address>         When doing solo mining this is the address your mined XPM will be transfered to.");
+	puts("   -getwork					   Force using getwork protocol. Usefull for solo mining.");
 	puts("Example usage:");
 	puts("   jhPrimeminer.exe -o http://poolurl.com:8332 -u workername.1 -p workerpass -t 4");
 	puts("Press any key to continue...");
@@ -976,6 +978,13 @@ void jhMiner_parseCommandline(int argc, char **argv)
 			commandlineInput.xpmAddress = fStrDup(argv[cIdx], 64);
 			cIdx++;
 		}
+		else if (memcmp(argument, "-getwork", 9) == 0)
+		{
+			// -getwork
+			commandlineInput.useGetwork = true;
+			//cIdx++;
+		}
+
 		else if( memcmp(argument, "-t", 3)==0 )
 		{
 			// -t
@@ -1784,6 +1793,7 @@ int main(int argc, char **argv)
 	if (commandlineInput.sievePrimeLimit == 0) //default before parsing 
 		commandlineInput.sievePrimeLimit = commandlineInput.sieveSize;  //default is sieveSize 
 	primeStats.nL1CacheElements = commandlineInput.L1CacheElements;
+	useGetBlockTemplate = !commandlineInput.useGetwork;
 
 	if(commandlineInput.primorialMultiplier == 0)
 	{
@@ -1909,12 +1919,15 @@ int main(int argc, char **argv)
 		else
 		{
 			workData.protocolMode = MINER_PROTOCOL_GETWORK;
-			printf("Using GetWork() protocol\n");
-			printf("Warning: \n");
-			printf("   GetWork() is outdated and inefficient. You are losing mining performance\n");
-			printf("   by using it. If the pool supports it, consider switching to x.pushthrough.\n");
-			printf("   Just add the port :10034 to the -o parameter.\n");
-			printf("   Example: jhPrimeminer.exe -o http://poolurl.net:10034 ...\n");
+			if (!commandlineInput.useGetwork)
+			{
+				printf("Using GetWork() protocol\n");
+				printf("Warning: \n");
+				printf("   GetWork() is outdated and inefficient. You are losing mining performance\n");
+				printf("   by using it. If the pool supports it, consider switching to x.pushthrough.\n");
+				printf("   Just add the port :10034 to the -o parameter.\n");
+				printf("   Example: jhPrimeminer.exe -o http://poolurl.net:10034 ...\n");
+			}
 		}
 	}
 	// initial query new work / create new connection
