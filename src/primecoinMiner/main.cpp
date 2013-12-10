@@ -1651,7 +1651,7 @@ int jhMiner_main_getworkMode()
 			}
 			lastBlockCount = currentBlockCount;
 			
-			Sleep(200);
+			Sleep(2000);
 		}
 		loopCounter++;
 	}
@@ -1832,7 +1832,7 @@ int main(int argc, char **argv)
 	// print header
 	printf("\n");
 	printf("\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBB\n");
-	printf("\xBA  jhPrimeMiner - mod by hg5fm (mumus) -v8.1 beta (9/29/2013)   \xBA\n");
+	printf("\xBA  jhPrimeMiner - mod by hg5fm (mumus) -v8.2 beta (12/10/2013)  \xBA\n");
 	printf("\xBA  author: JH (http://ypool.net)                                \xBA\n");
 	printf("\xBA  contributors: x3maniac                                       \xBA\n");
 	printf("\xBA  Credits: Sunny King for the original Primecoin client&miner  \xBA\n");

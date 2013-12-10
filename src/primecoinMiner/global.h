@@ -157,7 +157,7 @@ typedef struct
 	volatile float fShareValue;
 	volatile float fBlockShareValue;
 	volatile float fTotalSubmittedShareValue;
-	volatile uint32 chainCounter[12];
+	volatile uint32 chainCounter[15];
 	volatile uint32 nWaveTime;
 	volatile unsigned int nWaveRound;
 	volatile uint32 nTestTime;
