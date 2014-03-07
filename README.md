@@ -4,7 +4,7 @@ jhPrimeminer
 jhPrimeminer is a optimized pool miner for primecoin.
 
 Binary versions will be made available here:
-https://www.dropbox.com/sh/sq24hzo993afy9c/l7icP0KiuM
+https://mega.co.nz/#F!FA9jVJoC!avbe9C3WMdlroM8gbJG7Ew
 
 If you found this helpfull you can support my work.
 
